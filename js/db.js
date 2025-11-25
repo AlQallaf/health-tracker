@@ -1,0 +1,55 @@
+// db.js
+const DB_NAME = "healthProgressTracker";
+// ⬅️ bump version so onupgradeneeded runs and creates appSettings for old DBs
+const DB_VERSION = 2;
+
+let dbPromise;
+
+export function initDB() {
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onupgradeneeded = (event) => {
+        const database = event.target.result;
+        ensureStore(database, "monthlyGoals", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        ensureStore(database, "weeklyGoals", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        ensureStore(database, "routineTasks", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        ensureStore(database, "dailyEntries", { keyPath: "key" });
+        // ✅ this will now be created for everyone when version upgrades to 2
+        ensureStore(database, "appSettings", { keyPath: "key" });
+      };
+
+      request.onsuccess = () => {
+        const database = request.result;
+        database.onversionchange = () => {
+          database.close();
+        };
+        resolve(database);
+      };
+
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  return dbPromise;
+}
+
+export function getDB() {
+  return initDB();
+}
+
+function ensureStore(db, name, options) {
+  if (!db.objectStoreNames.contains(name)) {
+    db.createObjectStore(name, options);
+  }
+}

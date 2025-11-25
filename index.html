@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Health Progress Tracker</title>
+    <meta name="theme-color" content="#0047b3" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <header>Health Progress Tracker</header>
+
+    <div class="tabs" id="tabBar">
+      <button class="tab active" data-tab-target="daily">Daily</button>
+      <button class="tab" data-tab-target="weekly">Weekly</button>
+      <button class="tab" data-tab-target="monthly">Monthly</button>
+      <button class="tab" data-tab-target="routineManage">Setup</button>
+    </div>
+
+    <main class="container">
+      <section class="section active" data-tab-section="daily">
+        <div class="card">
+          <div class="card-title">
+            <h2>Daily Routine</h2>
+          </div>
+          <div id="routineList" class="routine-list">Loading...</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title spread">
+            <h2>Daily Tasks</h2>
+            <button class="btn secondary" id="aiDayPlannerBtn">
+              AI Day Planner
+            </button>
+          </div>
+          <div class="task-row">
+            <input
+              type="text"
+              id="newDailyTask"
+              placeholder="Add a daily task"
+              autocomplete="off"
+            />
+            <button class="btn" id="addDailyTaskBtn">Add</button>
+          </div>
+          <div id="dailyTaskList" class="daily-task-list">No tasks yet.</div>
+          <div class="ai-day-plan">
+            <div class="ai-day-plan-header">
+              <h3>AI Proposed Day Plan</h3>
+              <button class="btn secondary" id="aiClearPlanBtn">
+                Clear Plan
+              </button>
+            </div>
+            <div id="aiDayPlanList" class="ai-day-plan-list">
+              No AI plan yet.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" data-tab-section="weekly">
+        <div class="card">
+          <div class="card-title">
+            <h2>Add Weekly Goal</h2>
+          </div>
+          <div class="task-row">
+            <input
+              type="text"
+              id="newWeeklyGoal"
+              placeholder="Add a weekly goal"
+              autocomplete="off"
+            />
+            <button class="btn" id="addWeeklyGoalBtn">Add</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <h2>Weekly Goals</h2>
+          </div>
+          <div id="weeklyList" class="weekly-list">No weekly goals yet.</div>
+        </div>
+      </section>
+
+      <section class="section" data-tab-section="monthly">
+        <div id="monthlyContent" class="monthly-content"></div>
+      </section>
+
+      <section class="section" data-tab-section="routineManage">
+        <div class="card">
+          <div class="card-title">
+            <h2>Routine Checklist</h2>
+          </div>
+          <p class="muted-text">
+            Configure the default routine items that appear on the Daily tab.
+            Edit labels, toggle availability, or remove them entirely.
+          </p>
+          <div id="routineManageList" class="routine-manage-list">
+            Loading routine tasks...
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <h2>Add a Routine Task</h2>
+          </div>
+          <div class="task-row">
+            <input
+              type="text"
+              id="newRoutineTask"
+              placeholder="e.g. Stretching session"
+              autocomplete="off"
+            />
+            <button class="btn" id="addRoutineTaskBtn">Add</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <h2>Data Maintenance</h2>
+          </div>
+          <p class="muted-text">
+            Inspect, edit, or permanently delete any record stored in IndexedDB.
+            Use caution—changes here are immediate.
+          </p>
+          <div class="data-manager-controls">
+            <label>
+              Store
+              <select id="dataStoreSelect"></select>
+            </label>
+            <button class="btn secondary" id="dataRefreshBtn">Refresh</button>
+            <button class="btn secondary danger" id="dataClearStoreBtn">
+              Clear Store
+            </button>
+          </div>
+          <div id="dataStoreList" class="data-store-list">
+            Select a store to inspect its data.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <h2>Gemini API Configuration</h2>
+          </div>
+          <p class="muted-text">
+            Store your Gemini API key locally so the AI features can run. The
+            value never leaves your device.
+          </p>
+          <div class="task-row">
+            <input
+              type="password"
+              id="geminiApiKeyInput"
+              placeholder="Paste your Gemini API key"
+              autocomplete="off"
+            />
+            <button class="btn" id="saveGeminiKeyBtn">Save</button>
+            <button class="btn secondary" id="testGeminiKeyBtn">Test</button>
+          </div>
+          <div id="geminiKeyStatus" class="muted-text"></div>
+        </div>
+      </section>
+    </main>
+
+    <button
+      class="floating-ai-btn"
+      id="floatingAiBtn"
+      title="Open Health Coach"
+    >
+      AI
+    </button>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>

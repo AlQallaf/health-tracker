@@ -1,0 +1,64 @@
+# --------------------------------------------------
+# macOS system files
+# --------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+__MACOSX/
+
+# --------------------------------------------------
+# Node modules (in case you add a build system later)
+# --------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --------------------------------------------------
+# Local environment / API keys
+# --------------------------------------------------
+.env
+.env.local
+.env.*.local
+
+# In case you store Gemini API keys locally
+gemini_key.txt
+
+# --------------------------------------------------
+# Editor / IDE files
+# --------------------------------------------------
+.vscode/
+*.code-workspace
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# --------------------------------------------------
+# Logs
+# --------------------------------------------------
+logs/
+*.log
+
+# --------------------------------------------------
+# Build / output directories (if you add bundlers)
+# --------------------------------------------------
+dist/
+build/
+cache/
+tmp/
+
+# --------------------------------------------------
+# Service worker cache folders (just in case)
+# --------------------------------------------------
+.sw/
+workbox-config.js
+
+# --------------------------------------------------
+# OS-level trash
+# --------------------------------------------------
+Thumbs.db
+ehthumbs.db
