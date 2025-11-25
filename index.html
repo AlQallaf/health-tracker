@@ -23,6 +23,13 @@
       <section class="section active" data-tab-section="daily">
         <div class="card">
           <div class="card-title">
+            <h2>Daily Progress</h2>
+          </div>
+          <div id="dailyProgressRings" class="daily-progress"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
             <h2>Daily Routine</h2>
           </div>
           <div id="routineList" class="routine-list">Loading...</div>
@@ -33,6 +40,7 @@
             <h2>Daily Tasks</h2>
             <div class="daily-controls">
               <label class="daily-date-label">
+                <span>Day</span>
                 <input type="date" id="dailyDatePicker" />
               </label>
               <button class="btn secondary" id="aiDayPlannerBtn">

@@ -20,6 +20,7 @@ async function bootstrap() {
       dailyTaskList: document.getElementById("dailyTaskList"),
       newDailyTask: document.getElementById("newDailyTask"),
       addDailyTask: document.getElementById("addDailyTaskBtn"),
+      dailyProgressRings: document.getElementById("dailyProgressRings"),
       dailyDatePicker: document.getElementById("dailyDatePicker"),
       weeklyList: document.getElementById("weeklyList"),
       newWeeklyGoal: document.getElementById("newWeeklyGoal"),
@@ -52,6 +53,7 @@ async function bootstrap() {
       listElement: elements.dailyTaskList,
       inputElement: elements.newDailyTask,
       addButtonElement: elements.addDailyTask,
+      progressElement: elements.dailyProgressRings,
       dateInputElement: elements.dailyDatePicker,
     });
 

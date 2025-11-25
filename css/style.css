@@ -118,6 +118,54 @@ header {
   border: 1px solid #cbd2ff;
 }
 
+.daily-progress {
+  margin: 8px 0 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.ring-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #dfe4ff;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f7f9ff, #f1f6ff);
+}
+
+.ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: conic-gradient(#0047b3 0%, #e7ebff 0%);
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 6px #fff;
+}
+
+.ring span {
+  font-weight: 700;
+  color: #1f2f6b;
+}
+
+.ring-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ring-label {
+  font-weight: 600;
+  color: #1f2f6b;
+}
+
+.ring-sub {
+  font-size: 0.9rem;
+  color: #566e88;
+}
+
 .task-row {
   display: flex;
   gap: 10px;
@@ -961,6 +1009,10 @@ header {
   .daily-controls {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .daily-progress {
+    grid-template-columns: 1fr;
   }
 
   .btn {
