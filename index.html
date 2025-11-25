@@ -15,6 +15,7 @@
       <button class="tab active" data-tab-target="daily">Daily</button>
       <button class="tab" data-tab-target="weekly">Weekly</button>
       <button class="tab" data-tab-target="monthly">Monthly</button>
+      <button class="tab" data-tab-target="data">Data</button>
       <button class="tab" data-tab-target="routineManage">Setup</button>
     </div>
 
@@ -28,11 +29,16 @@
         </div>
 
         <div class="card">
-          <div class="card-title spread">
+          <div class="card-title spread daily-header">
             <h2>Daily Tasks</h2>
-            <button class="btn secondary" id="aiDayPlannerBtn">
-              AI Day Planner
-            </button>
+            <div class="daily-controls">
+              <label class="daily-date-label">
+                <input type="date" id="dailyDatePicker" />
+              </label>
+              <button class="btn secondary" id="aiDayPlannerBtn">
+                AI Day Planner
+              </button>
+            </div>
           </div>
           <div class="task-row">
             <input
@@ -120,22 +126,8 @@
             <h2>Data Maintenance</h2>
           </div>
           <p class="muted-text">
-            Inspect, edit, or permanently delete any record stored in IndexedDB.
-            Use caution—changes here are immediate.
+            Moved to the Data tab for a clearer workflow.
           </p>
-          <div class="data-manager-controls">
-            <label>
-              Store
-              <select id="dataStoreSelect"></select>
-            </label>
-            <button class="btn secondary" id="dataRefreshBtn">Refresh</button>
-            <button class="btn secondary danger" id="dataClearStoreBtn">
-              Clear Store
-            </button>
-          </div>
-          <div id="dataStoreList" class="data-store-list">
-            Select a store to inspect its data.
-          </div>
         </div>
 
         <div class="card">
@@ -157,6 +149,40 @@
             <button class="btn secondary" id="testGeminiKeyBtn">Test</button>
           </div>
           <div id="geminiKeyStatus" class="muted-text"></div>
+        </div>
+      </section>
+
+      <section class="section" data-tab-section="data">
+        <div class="card">
+          <div class="card-title">
+            <h2>Data Maintenance</h2>
+          </div>
+          <p class="muted-text">
+            Review or edit everything stored locally. Changes apply immediately
+            to your offline data.
+          </p>
+          <div id="dataOverview" class="data-overview-grid">
+            Loading overview...
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title spread">
+            <h2>Browse Records</h2>
+            <div class="data-actions">
+              <select class="btn secondary" id="dataStoreSelect"></select>
+              <button class="btn secondary" id="dataRefreshBtn">Refresh</button>
+              <button class="btn secondary" id="dataExportBtn">
+                Export All
+              </button>
+              <button class="btn secondary danger" id="dataClearStoreBtn">
+                Clear Store
+              </button>
+            </div>
+          </div>
+          <div id="dataStoreList" class="data-store-list">
+            Select a store to inspect its data.
+          </div>
         </div>
       </section>
     </main>

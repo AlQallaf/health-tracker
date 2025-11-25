@@ -33,7 +33,7 @@ icons/              # PWA icons
 ## Current Features
 
 1. **Daily Tab**
-   - Routine checklist with daily completion stored per day.
+   - Routine checklist with daily completion stored per day; switch the date picker to review other days.
    - Daily tasks list with inline add/delete and checkbox state.
    - **AI Day Planner** button: opens a modal to enter tasks/context, calls Gemini to get a JSON day plan in EN/AR, lets the user edit/approve/delete each proposed task, and converts approved ones into actual daily tasks.
 
@@ -46,8 +46,10 @@ icons/              # PWA icons
 
 4. **Setup Tab**
    - Routine manager.
-   - Data maintenance inspector.
    - **Gemini API Configuration** card: save/test API key stored locally via IndexedDB (`appSettings` → `appConfig`).
+
+7. **Data Tab**
+   - Full data maintenance page with per-store counts, browsing/editing, clearing stores, and exporting all IndexedDB data.
 
 5. **Floating AI Button**
    - Opens Health Coach panel (daily/weekly/monthly/motivation prompts) on any tab with EN/AR toggle.

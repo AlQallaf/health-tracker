@@ -1,6 +1,10 @@
 import { getDB } from "./db.js";
 import { getCurrentProfile } from "./utils.js";
-import { fetchDailyEntry, updateRoutineCompletion } from "./daily.js";
+import {
+  fetchDailyEntry,
+  getActiveDailyDate,
+  updateRoutineCompletion,
+} from "./daily.js";
 
 const DEFAULT_ROUTINE_TASKS = [
   "Morning Walk (10 min)",
@@ -23,11 +27,12 @@ export function initRoutineSection({ listElement }) {
     const checkbox = event.target.closest("input[type='checkbox'][data-routine-id]");
     if (!checkbox) return;
     const routineId = Number(checkbox.dataset.routineId);
-    await updateRoutineCompletion(routineId, checkbox.checked);
+    await updateRoutineCompletion(routineId, checkbox.checked, getActiveDailyDate());
   });
 
   if (!routineListenerAttached) {
     window.addEventListener("routineUpdated", () => refreshRoutineList());
+    window.addEventListener("dailyDateChanged", () => refreshRoutineList());
     routineListenerAttached = true;
   }
 
@@ -45,7 +50,10 @@ export async function ensureRoutineDefaults() {
 export async function refreshRoutineList() {
   if (!listEl) return;
   listEl.textContent = "Loading...";
-  const [tasks, entry] = await Promise.all([getRoutineTasks(), fetchDailyEntry()]);
+  const [tasks, entry] = await Promise.all([
+    getRoutineTasks(),
+    fetchDailyEntry(getActiveDailyDate()),
+  ]);
 
   if (tasks.length === 0) {
     listEl.textContent = "No routine tasks configured.";

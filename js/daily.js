@@ -4,11 +4,19 @@ import { dailyKey, getCurrentProfile, todayString } from "./utils.js";
 let listEl;
 let inputEl;
 let addButton;
+let dateInputEl;
+let activeDate = todayString();
 
-export function initDailyTasksSection({ listElement, inputElement, addButtonElement }) {
+export function initDailyTasksSection({
+  listElement,
+  inputElement,
+  addButtonElement,
+  dateInputElement,
+}) {
   listEl = listElement;
   inputEl = inputElement;
   addButton = addButtonElement;
+  dateInputEl = dateInputElement;
 
   if (!listEl || !inputEl || !addButton) return;
 
@@ -18,6 +26,17 @@ export function initDailyTasksSection({ listElement, inputElement, addButtonElem
       handleAddTask();
     }
   });
+
+  if (dateInputEl) {
+    if (!dateInputEl.value) {
+      dateInputEl.value = activeDate;
+    } else {
+      activeDate = dateInputEl.value;
+    }
+    dateInputEl.addEventListener("change", () => {
+      setActiveDailyDate(dateInputEl.value || todayString());
+    });
+  }
 
   listEl.addEventListener("change", (event) => {
     const checkbox = event.target.closest("input[type='checkbox'][data-task-id]");
@@ -30,7 +49,7 @@ export function initDailyTasksSection({ listElement, inputElement, addButtonElem
 
 export async function refreshDailyTasks() {
   if (!listEl) return;
-  const entry = await fetchDailyEntry();
+  const entry = await fetchDailyEntry(activeDate);
   const tasks = Array.isArray(entry?.tasks) ? entry.tasks : [];
 
   if (tasks.length === 0) {
@@ -61,7 +80,11 @@ export async function refreshDailyTasks() {
   listEl.appendChild(fragment);
 }
 
-export async function updateRoutineCompletion(routineId, done, date = todayString()) {
+export async function updateRoutineCompletion(
+  routineId,
+  done,
+  date = activeDate || todayString()
+) {
   const entry = await ensureDailyEntry(date);
   entry.routineCompletions = Array.isArray(entry.routineCompletions)
     ? entry.routineCompletions
@@ -87,7 +110,7 @@ export async function fetchDailyEntry(date = todayString()) {
 
 export async function createDailyTask(
   label,
-  { source = "adhoc", weeklyGoalId = null, date = todayString() } = {}
+  { source = "adhoc", weeklyGoalId = null, date = activeDate || todayString() } = {}
 ) {
   const entry = await ensureDailyEntry(date);
   entry.tasks = Array.isArray(entry.tasks) ? entry.tasks : [];
@@ -143,7 +166,7 @@ async function handleAddTask() {
 }
 
 async function toggleDailyTask(taskId, done) {
-  const entry = await ensureDailyEntry();
+  const entry = await ensureDailyEntry(activeDate);
   entry.tasks = Array.isArray(entry.tasks) ? entry.tasks : [];
   const task = entry.tasks.find((item) => item.id === taskId);
   if (!task) return;
@@ -151,7 +174,7 @@ async function toggleDailyTask(taskId, done) {
   await saveDailyEntry(entry);
 }
 
-async function ensureDailyEntry(date = todayString()) {
+async function ensureDailyEntry(date = activeDate || todayString()) {
   const existing = await fetchDailyEntry(date);
   if (existing) {
     existing.routineCompletions = Array.isArray(existing.routineCompletions)
@@ -177,4 +200,21 @@ async function saveDailyEntry(entry) {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+}
+
+export function getActiveDailyDate() {
+  return activeDate;
+}
+
+export function setActiveDailyDate(nextDate) {
+  activeDate = nextDate || todayString();
+  if (dateInputEl && dateInputEl.value !== activeDate) {
+    dateInputEl.value = activeDate;
+  }
+  refreshDailyTasks();
+  window.dispatchEvent(
+    new CustomEvent("dailyDateChanged", {
+      detail: { date: activeDate },
+    })
+  );
 }

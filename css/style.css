@@ -93,6 +93,31 @@ header {
   justify-content: space-between;
 }
 
+.daily-header {
+  align-items: flex-start;
+}
+
+.daily-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.daily-date-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #2f3a70;
+}
+
+.daily-date-label input[type="date"] {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #cbd2ff;
+}
+
 .task-row {
   display: flex;
   gap: 10px;
@@ -443,6 +468,171 @@ header {
   overflow: auto;
 }
 
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e3e6f3;
+  text-align: left;
+}
+
+.data-table th {
+  background: #f2f4ff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #d0d7ff;
+  font-size: 0.9rem;
+}
+
+.data-table td:last-child {
+  white-space: nowrap;
+}
+
+.day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.day-card {
+  border: 1px solid #dce4ff;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.day-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: #f4f6ff;
+  gap: 10px;
+}
+
+.day-card-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.day-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.day-section-header {
+  margin-bottom: 6px;
+}
+
+.day-task-list,
+.day-routine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-task-row,
+.day-routine-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #e5e9ff;
+  border-radius: 10px;
+  background: #f9faff;
+}
+
+.day-task-row input[type="text"],
+.day-routine-row input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccd4ff;
+  font-size: 0.9rem;
+}
+
+.day-task-row input[type="checkbox"],
+.day-routine-row input[type="checkbox"] {
+  justify-self: start;
+}
+
+.day-task-add {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.day-extras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.day-extra-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.day-extra-field input {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #d0d7ff;
+}
+
+.day-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.data-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.data-overview-card {
+  padding: 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f5f7ff, #f0f9ff);
+  border: 1px solid #dce4ff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.data-overview-count {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #0047b3;
+}
+
+.data-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .data-entry-card {
   border: 1px solid #dcdcdc;
   border-radius: 8px;
@@ -761,6 +951,16 @@ header {
 @media (max-width: 600px) {
   .task-row {
     flex-direction: column;
+  }
+
+  .daily-controls,
+  .data-actions {
+    width: 100%;
+  }
+
+  .daily-controls {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .btn {

@@ -20,6 +20,7 @@ async function bootstrap() {
       dailyTaskList: document.getElementById("dailyTaskList"),
       newDailyTask: document.getElementById("newDailyTask"),
       addDailyTask: document.getElementById("addDailyTaskBtn"),
+      dailyDatePicker: document.getElementById("dailyDatePicker"),
       weeklyList: document.getElementById("weeklyList"),
       newWeeklyGoal: document.getElementById("newWeeklyGoal"),
       addWeeklyGoal: document.getElementById("addWeeklyGoalBtn"),
@@ -31,10 +32,12 @@ async function bootstrap() {
       aiClearPlanBtn: document.getElementById("aiClearPlanBtn"),
       launchAiCoach: document.getElementById("launchAiCoachBtn"),
       floatingAiBtn: document.getElementById("floatingAiBtn"),
+      dataOverview: document.getElementById("dataOverview"),
       dataStoreSelect: document.getElementById("dataStoreSelect"),
       dataStoreList: document.getElementById("dataStoreList"),
       dataRefreshBtn: document.getElementById("dataRefreshBtn"),
       dataClearStoreBtn: document.getElementById("dataClearStoreBtn"),
+      dataExportBtn: document.getElementById("dataExportBtn"),
       monthlyContent: document.getElementById("monthlyContent"),
       geminiKeyInput: document.getElementById("geminiApiKeyInput"),
       geminiSaveBtn: document.getElementById("saveGeminiKeyBtn"),
@@ -49,6 +52,7 @@ async function bootstrap() {
       listElement: elements.dailyTaskList,
       inputElement: elements.newDailyTask,
       addButtonElement: elements.addDailyTask,
+      dateInputElement: elements.dailyDatePicker,
     });
 
     initWeeklySection({
@@ -64,10 +68,12 @@ async function bootstrap() {
       addButtonElement: elements.addRoutineTask,
     });
     initDataManager({
+      overviewElement: elements.dataOverview,
       selectElement: elements.dataStoreSelect,
       listElement: elements.dataStoreList,
       refreshButton: elements.dataRefreshBtn,
       clearButton: elements.dataClearStoreBtn,
+      exportButton: elements.dataExportBtn,
     });
     wireAiAssistant([elements.launchAiCoach, elements.floatingAiBtn]);
     initDayPlanner({
