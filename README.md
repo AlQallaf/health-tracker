@@ -11,7 +11,7 @@ css/
 js/
   app.js            # Main bootstrap & wiring of all modules
   db.js             # IndexedDB init + stores (dailyEntries, weeklyGoals, ...)
-  daily.js          # Daily tasks CRUD
+  daily.js          # Daily tasks CRUD (with optional time per task)
   weekly.js         # Weekly goals CRUD
   monthly.js        # Monthly goals + child weekly list
   routine.js        # Routine checklist storage + completions
@@ -37,7 +37,7 @@ icons/              # PWA icons
 
 1. **Daily Tab**
    - Routine checklist with daily completion stored per day; switch the date picker to review other days.
-   - Daily tasks list with inline add/delete and checkbox state.
+   - Daily tasks list with optional time, inline add/delete, checkbox state, and sorted by time when present.
    - Daily progress rings always visible (0% when empty) for tasks and routine completion on the selected day.
    - **AI Day Planner** button: opens a modal to enter tasks/context, calls Gemini to get a JSON day plan in EN/AR, lets the user edit/approve/delete each proposed task, and converts approved ones into actual daily tasks on the chosen date (not just today).
 
@@ -55,12 +55,13 @@ icons/              # PWA icons
 7. **Data Tab**
    - Full data maintenance page with per-store counts, browsing/editing, clearing stores, and exporting all IndexedDB data.
    - Backup & Migration textarea: copy the entire DB JSON with one click or paste JSON to import/replace all stores.
+   - Stores include `dailyTasks` (time-aware tasks) plus `dailyEntries` for routine completions.
 
 5. **Floating AI Button**
    - Opens Health Coach panel (daily/weekly/monthly/motivation prompts) on any tab with EN/AR toggle.
 
 6. **Offline Support**
-   - Service worker caches CSS, JS, icons, AI modules, day planner, settings, tests runner, etc. (versioned cache, currently `v26`).
+   - Service worker caches CSS, JS, icons, AI modules, day planner, settings, tests runner, etc. (versioned cache, currently `v30`).
 
 ## Gemini API Key Flow
 

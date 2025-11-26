@@ -5,6 +5,7 @@ const STORE_CONFIG = {
   weeklyGoals: { label: "Weekly Goals", keyField: "id" },
   routineTasks: { label: "Routine Tasks", keyField: "id" },
   dailyEntries: { label: "Daily Entries", keyField: "key" },
+  dailyTasks: { label: "Daily Tasks", keyField: "id" },
 };
 
 let selectEl;

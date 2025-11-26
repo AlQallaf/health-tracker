@@ -54,6 +54,23 @@
               placeholder="Add a daily task"
               autocomplete="off"
             />
+            <div class="time-picker">
+              <select
+                id="newDailyTaskHour"
+                class="task-time-input"
+                aria-label="Hour (24h)"
+              >
+                <option value="">HH</option>
+              </select>
+              <span class="time-separator">:</span>
+              <select
+                id="newDailyTaskMinute"
+                class="task-time-input"
+                aria-label="Minute"
+              >
+                <option value="">MM</option>
+              </select>
+            </div>
             <button class="btn" id="addDailyTaskBtn">Add</button>
           </div>
           <div id="dailyTaskList" class="daily-task-list">No tasks yet.</div>
@@ -187,8 +204,12 @@
             placeholder="JSON will appear here after export. Paste JSON here to import."
           ></textarea>
           <div class="data-actions">
-            <button class="btn secondary" id="dataCopyJsonBtn">Copy JSON</button>
-            <button class="btn secondary" id="dataImportJsonBtn">Import JSON</button>
+            <button class="btn secondary" id="dataCopyJsonBtn">
+              Copy JSON
+            </button>
+            <button class="btn secondary" id="dataImportJsonBtn">
+              Import JSON
+            </button>
             <span id="dataImportStatus" class="muted-text"></span>
           </div>
         </div>

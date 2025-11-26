@@ -3,6 +3,8 @@ import { dailyKey, getCurrentProfile, todayString } from "./utils.js";
 
 let listEl;
 let inputEl;
+let hourSelectEl;
+let minuteSelectEl;
 let addButton;
 let dateInputEl;
 let progressEl;
@@ -12,17 +14,23 @@ let progressListenerAttached = false;
 export function initDailyTasksSection({
   listElement,
   inputElement,
+  hourSelectElement,
+  minuteSelectElement,
   addButtonElement,
   progressElement,
   dateInputElement,
 }) {
   listEl = listElement;
   inputEl = inputElement;
+  hourSelectEl = hourSelectElement;
+  minuteSelectEl = minuteSelectElement;
   addButton = addButtonElement;
   progressEl = progressElement;
   dateInputEl = dateInputElement;
 
   if (!listEl || !inputEl || !addButton) return;
+
+  if (hourSelectEl && minuteSelectEl) populateTimeSelectors(hourSelectEl, minuteSelectEl);
 
   addButton.addEventListener("click", handleAddTask);
   inputEl.addEventListener("keydown", (event) => {
@@ -61,9 +69,7 @@ export function initDailyTasksSection({
 
 export async function refreshDailyTasks() {
   if (!listEl) return;
-
-  const entry = await fetchDailyEntry(activeDate);
-  const tasks = Array.isArray(entry?.tasks) ? entry.tasks : [];
+  const tasks = await fetchDailyTasks(activeDate);
 
   listEl.innerHTML = "";
 
@@ -72,8 +78,6 @@ export async function refreshDailyTasks() {
     empty.className = "no-tasks";
     empty.textContent = "No tasks yet.";
     listEl.appendChild(empty);
-
-    // ⭐ IMPORTANT: still render progress rings
     renderDailyProgress();
     return;
   }
@@ -89,17 +93,20 @@ export async function refreshDailyTasks() {
     checkbox.checked = Boolean(task.done);
     checkbox.dataset.taskId = task.id;
 
-    const span = document.createElement("span");
-    span.textContent = task.label;
+  const label = document.createElement("span");
+  label.textContent = task.label;
+
+  const time = document.createElement("span");
+  time.className = "task-date";
+  time.textContent = task.time || "";
 
     wrapper.appendChild(checkbox);
-    wrapper.appendChild(span);
+    wrapper.appendChild(label);
+    if (task.time) wrapper.appendChild(time);
     fragment.appendChild(wrapper);
   });
 
   listEl.appendChild(fragment);
-
-  // Always update rings
   renderDailyProgress();
 }
 
@@ -140,47 +147,49 @@ export async function createDailyTask(
     source = "adhoc",
     weeklyGoalId = null,
     date = activeDate || todayString(),
+    time = "",
   } = {}
 ) {
-  const entry = await ensureDailyEntry(date);
-  entry.tasks = Array.isArray(entry.tasks) ? entry.tasks : [];
-  entry.tasks.push({
-    id: `t${Date.now()}`,
-    label,
-    done: false,
-    source,
-    weeklyGoalId,
+  const db = await getDB();
+  const normalizedTime = normalizeTimeString(time);
+  const now = Date.now();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("dailyTasks", "readwrite");
+    tx.objectStore("dailyTasks").add({
+      profile: getCurrentProfile(),
+      date,
+      label,
+      time: normalizedTime,
+      done: false,
+      source,
+      weeklyGoalId,
+      createdAt: now,
+    });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
-  await saveDailyEntry(entry);
 }
 
 export async function getLinkedTasksForWeeklyGoal(weeklyGoalId) {
   if (!weeklyGoalId) return [];
   const db = await getDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction("dailyEntries", "readonly");
-    const request = tx.objectStore("dailyEntries").getAll();
+    const tx = db.transaction("dailyTasks", "readonly");
+    const request = tx.objectStore("dailyTasks").getAll();
     request.onsuccess = () => {
-      const entries = request.result || [];
+      const tasks = request.result || [];
       const profile = getCurrentProfile();
-      const linked = [];
-      entries
-        .filter((entry) => entry.profile === profile)
-        .forEach((entry) => {
-          const tasks = Array.isArray(entry.tasks) ? entry.tasks : [];
-          tasks.forEach((task) => {
-            if (task.weeklyGoalId === weeklyGoalId) {
-              linked.push({
-                id: task.id,
-                label: task.label,
-                done: task.done,
-                date: entry.date,
-                source: task.source,
-              });
-            }
-          });
-        });
-      linked.sort((a, b) => a.date.localeCompare(b.date));
+      const linked = tasks
+        .filter((task) => task.profile === profile && task.weeklyGoalId === weeklyGoalId)
+        .map((task) => ({
+          id: task.id,
+          label: task.label,
+          done: task.done,
+          date: task.date,
+          source: task.source,
+          time: task.time,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
       resolve(linked);
     };
     request.onerror = () => reject(request.error);
@@ -191,17 +200,30 @@ async function handleAddTask() {
   const value = inputEl.value.trim();
   if (!value) return;
   inputEl.value = "";
-  await createDailyTask(value);
+  const time = buildTimeFromSelectors(hourSelectEl, minuteSelectEl);
+  await createDailyTask(value, { time });
+  if (hourSelectEl) hourSelectEl.value = "09";
+  if (minuteSelectEl) minuteSelectEl.value = "00";
   refreshDailyTasks();
 }
 
 async function toggleDailyTask(taskId, done) {
-  const entry = await ensureDailyEntry(activeDate);
-  entry.tasks = Array.isArray(entry.tasks) ? entry.tasks : [];
-  const task = entry.tasks.find((item) => item.id === taskId);
-  if (!task) return;
-  task.done = done;
-  await saveDailyEntry(entry);
+  const db = await getDB();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction("dailyTasks", "readwrite");
+    const store = tx.objectStore("dailyTasks");
+    const req = store.get(Number(taskId));
+    req.onsuccess = () => {
+      const task = req.result;
+      if (task) {
+        task.done = done;
+        store.put(task);
+      }
+    };
+    req.onerror = () => reject(req.error);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
   renderDailyProgress();
 }
 
@@ -219,8 +241,27 @@ async function ensureDailyEntry(date = activeDate || todayString()) {
     profile: getCurrentProfile(),
     date,
     routineCompletions: [],
-    tasks: [],
   };
+}
+
+export async function fetchDailyTasks(date = activeDate || todayString()) {
+  const db = await getDB();
+  const profile = getCurrentProfile();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("dailyTasks", "readonly");
+    const store = tx.objectStore("dailyTasks");
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const tasks = (request.result || [])
+        .filter((t) => t.profile === profile && t.date === date)
+        .sort((a, b) => {
+          if (a.time && b.time && a.time !== b.time) return a.time.localeCompare(b.time);
+          return (a.createdAt || 0) - (b.createdAt || 0);
+        });
+      resolve(tasks);
+    };
+    request.onerror = () => reject(request.error);
+  });
 }
 
 async function saveDailyEntry(entry) {
@@ -255,19 +296,21 @@ async function renderDailyProgress() {
 
   let entry = { tasks: [], routineCompletions: [] };
   let routineTasks = [];
+  let tasks = [];
 
   try {
-    const [fetchedEntry, fetchedRoutines] = await Promise.all([
+    const [fetchedEntry, fetchedRoutines, fetchedTasks] = await Promise.all([
       fetchDailyEntry(activeDate),
       fetchRoutineTasksForProgress(),
+      fetchDailyTasks(activeDate),
     ]);
     entry = fetchedEntry || entry;
     routineTasks = fetchedRoutines || [];
+    tasks = fetchedTasks || [];
   } catch (error) {
     console.error("Progress fetch error", error);
   }
 
-  const tasks = Array.isArray(entry?.tasks) ? entry.tasks : [];
   const taskDone = tasks.filter((t) => t.done).length;
 
   const routineCompletions = Array.isArray(entry?.routineCompletions)
@@ -320,6 +363,56 @@ function buildRing({ label, done, total, color }) {
   ring.appendChild(dial);
   ring.appendChild(meta);
   return ring;
+}
+
+function normalizeTimeString(raw) {
+  if (!raw) return "";
+  const text = raw.trim();
+  const match = text.match(/^(\d{1,2}):(\d{2})(?:\s*([ap]m))?$/i);
+  if (!match) return "";
+  let [_, hh, mm, period] = match;
+  let hours = Number(hh);
+  const minutes = Number(mm);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return "";
+  if (period) {
+    const isPM = period.toLowerCase() === "pm";
+    hours = (hours % 12) + (isPM ? 12 : 0);
+  }
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function populateTimeSelectors(hourSelect, minuteSelect) {
+  if (hourSelect) {
+    const frag = document.createDocumentFragment();
+    for (let h = 0; h < 24; h++) {
+      const opt = document.createElement("option");
+      opt.value = String(h).padStart(2, "0");
+      opt.textContent = opt.value;
+      if (opt.value === "09") opt.selected = true;
+      frag.appendChild(opt);
+    }
+    hourSelect.innerHTML = "";
+    hourSelect.appendChild(frag);
+  }
+  if (minuteSelect) {
+    const frag = document.createDocumentFragment();
+    for (let m = 0; m < 60; m++) {
+      const opt = document.createElement("option");
+      opt.value = String(m).padStart(2, "0");
+      opt.textContent = opt.value;
+      if (opt.value === "00") opt.selected = true;
+      frag.appendChild(opt);
+    }
+    minuteSelect.innerHTML = "";
+    minuteSelect.appendChild(frag);
+  }
+}
+
+function buildTimeFromSelectors(hourSelect, minuteSelect) {
+  const hh = hourSelect?.value || "";
+  const mm = minuteSelect?.value || "";
+  if (!hh || !mm) return "";
+  return `${hh}:${mm}`;
 }
 
 async function fetchRoutineTasksForProgress() {

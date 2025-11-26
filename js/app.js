@@ -19,6 +19,8 @@ async function bootstrap() {
       routineList: document.getElementById("routineList"),
       dailyTaskList: document.getElementById("dailyTaskList"),
       newDailyTask: document.getElementById("newDailyTask"),
+      newDailyTaskHour: document.getElementById("newDailyTaskHour"),
+      newDailyTaskMinute: document.getElementById("newDailyTaskMinute"),
       addDailyTask: document.getElementById("addDailyTaskBtn"),
       dailyProgressRings: document.getElementById("dailyProgressRings"),
       dailyDatePicker: document.getElementById("dailyDatePicker"),
@@ -56,6 +58,8 @@ async function bootstrap() {
     initDailyTasksSection({
       listElement: elements.dailyTaskList,
       inputElement: elements.newDailyTask,
+      hourSelectElement: elements.newDailyTaskHour,
+      minuteSelectElement: elements.newDailyTaskMinute,
       addButtonElement: elements.addDailyTask,
       progressElement: elements.dailyProgressRings,
       dateInputElement: elements.dailyDatePicker,

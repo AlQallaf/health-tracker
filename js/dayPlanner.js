@@ -69,11 +69,11 @@ function buildModal() {
   dateInput.type = "date";
   dateInput.value = planDate || todayString();
 
-  const tasksInput = document.createElement("textarea");
-  tasksInput.placeholder = "List tasks for your day (one per line)...";
+    const tasksInput = document.createElement("textarea");
+    tasksInput.placeholder = "List tasks for your day (one per line)...";
 
-  const notesInput = document.createElement("textarea");
-  notesInput.placeholder = "Add extra context (energy, focus, meetings, etc.)";
+    const notesInput = document.createElement("textarea");
+    notesInput.placeholder = "Add extra context (energy, focus, meetings, etc.)";
 
   const status = document.createElement("div");
   status.className = "ai-panel-output";
@@ -272,9 +272,10 @@ function renderPlan() {
     approveBtn.addEventListener("click", async () => {
       if (!planTasks[index].label) return;
       const targetDate = planTasks[index].plannedDate || planDate || todayString();
-      await createDailyTask(composeLabel(planTasks[index]), {
+      await createDailyTask(planTasks[index].label, {
         source: "ai",
         date: targetDate,
+        time: normalizeTime(planTasks[index].time),
       });
       planTasks.splice(index, 1);
       renderPlan();
@@ -301,6 +302,22 @@ function composeLabel(task) {
   if (task.label) parts.push(task.label);
   if (task.notes) parts.push(`(${task.notes})`);
   return parts.join(" ").trim();
+}
+
+function normalizeTime(raw) {
+  if (!raw) return "";
+  const text = raw.trim();
+  const match = text.match(/^(\d{1,2}):(\d{2})(?:\s*([ap]m))?$/i);
+  if (!match) return text;
+  let [_, hh, mm, period] = match;
+  let hours = Number(hh);
+  const minutes = Number(mm);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return "";
+  if (period) {
+    const isPM = period.toLowerCase() === "pm";
+    hours = (hours % 12) + (isPM ? 12 : 0);
+  }
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function stripCodeFence(text) {

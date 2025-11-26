@@ -5,7 +5,7 @@ const DB_NAME =
     ? window.__DB_NAME_OVERRIDE__
     : DEFAULT_DB_NAME;
 // ⬅️ bump version so onupgradeneeded runs and creates appSettings for old DBs
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise;
 
@@ -29,6 +29,10 @@ export function initDB() {
           autoIncrement: true,
         });
         ensureStore(database, "dailyEntries", { keyPath: "key" });
+        ensureStore(database, "dailyTasks", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
         // ✅ this will now be created for everyone when version upgrades to 2
         ensureStore(database, "appSettings", { keyPath: "key" });
       };
@@ -38,6 +42,17 @@ export function initDB() {
         database.onversionchange = () => {
           database.close();
         };
+        // If a required store is missing (e.g., stale DB), reset and reopen
+        const requiredStores = ["monthlyGoals", "weeklyGoals", "routineTasks", "dailyEntries", "dailyTasks", "appSettings"];
+        const missing = requiredStores.some((name) => !database.objectStoreNames.contains(name));
+        if (missing) {
+          database.close();
+          indexedDB.deleteDatabase(DB_NAME).onsuccess = () => {
+            dbPromise = null;
+            resolve(initDB());
+          };
+          return;
+        }
         resolve(database);
       };
 

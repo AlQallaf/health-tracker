@@ -74,11 +74,11 @@ test(
   async () => {
     await resetDb();
     const date = "2024-01-02";
-    await modules.daily.createDailyTask("Hydrate", { date });
-    const entry = await modules.daily.fetchDailyEntry(date);
-    assert(entry, "Daily entry missing");
-    assertEqual(entry.tasks.length, 1, "Task count mismatch");
-    assertEqual(entry.tasks[0].label, "Hydrate");
+    await modules.daily.createDailyTask("Hydrate", { date, time: "06:30" });
+    const tasks = await modules.daily.fetchDailyTasks(date);
+    assertEqual(tasks.length, 1, "Task count mismatch");
+    assertEqual(tasks[0].label, "Hydrate");
+    assertEqual(tasks[0].time, "06:30", "Time should be stored in 24h format");
   }
 );
 
@@ -126,8 +126,8 @@ test(
     const exportJson = await exportAllData();
     await resetDb();
     await importAllData(JSON.parse(exportJson));
-    const entry = await modules.daily.fetchDailyEntry("2024-04-01");
-    assert(entry && entry.tasks?.some((t) => t.label === "Test backup"), "Import failed");
+    const tasks = await modules.daily.fetchDailyTasks("2024-04-01");
+    assert(tasks.some((t) => t.label === "Test backup"), "Import failed");
   }
 );
 
@@ -178,16 +178,10 @@ test(
     const today = "2024-07-01";
     const tomorrow = "2024-07-02";
     await modules.daily.createDailyTask("AI future", { date: tomorrow, source: "ai" });
-    const todayEntry = await modules.daily.fetchDailyEntry(today);
-    assert(
-      !todayEntry || !todayEntry.tasks?.some((t) => t.label === "AI future"),
-      "Task should not be stored on today's entry"
-    );
-    const tomorrowEntry = await modules.daily.fetchDailyEntry(tomorrow);
-    assert(
-      tomorrowEntry && tomorrowEntry.tasks?.some((t) => t.label === "AI future"),
-      "Task should be stored on the specified date"
-    );
+    const todayTasks = await modules.daily.fetchDailyTasks(today);
+    const tomorrowTasks = await modules.daily.fetchDailyTasks(tomorrow);
+    assert(!todayTasks.some((t) => t.label === "AI future"), "Task should not be on today");
+    assert(tomorrowTasks.some((t) => t.label === "AI future"), "Task should be on the specified date");
   }
 );
 
@@ -195,8 +189,19 @@ test(
 async function exportAllData() {
   const db = await modules.db.getDB();
   const payload = {};
-  const stores = ["monthlyGoals", "weeklyGoals", "routineTasks", "dailyEntries", "appSettings"];
+  const stores = [
+    "monthlyGoals",
+    "weeklyGoals",
+    "routineTasks",
+    "dailyEntries",
+    "dailyTasks",
+    "appSettings",
+  ];
   for (const store of stores) {
+    if (!db.objectStoreNames.contains(store)) {
+      payload[store] = [];
+      continue;
+    }
     payload[store] = await new Promise((resolve, reject) => {
       const tx = db.transaction(store, "readonly");
       const req = tx.objectStore(store).getAll();
@@ -208,9 +213,19 @@ async function exportAllData() {
 }
 
 async function importAllData(payload) {
+  // Recreate DB fresh to avoid stale connections or missing stores
+  await resetDb();
   const db = await modules.db.getDB();
-  const stores = ["monthlyGoals", "weeklyGoals", "routineTasks", "dailyEntries", "appSettings"];
+  const stores = [
+    "monthlyGoals",
+    "weeklyGoals",
+    "routineTasks",
+    "dailyEntries",
+    "dailyTasks",
+    "appSettings",
+  ];
   for (const store of stores) {
+    if (!db.objectStoreNames.contains(store)) continue;
     await new Promise((resolve, reject) => {
       const tx = db.transaction(store, "readwrite");
       const os = tx.objectStore(store);
