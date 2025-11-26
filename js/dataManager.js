@@ -483,6 +483,7 @@ async function handleSaveEntry(key) {
       tx.onerror = () => reject(tx.error);
     });
     refreshOverview();
+    emitDataChanged();
   } catch (error) {
     alert("Unable to save entry. Please check your input.");
     console.error(error);
@@ -563,6 +564,7 @@ async function handleDeleteEntry(key) {
   });
   refreshStoreView();
   refreshOverview();
+  emitDataChanged();
 }
 
 async function handleClearStore() {
@@ -578,6 +580,7 @@ async function handleClearStore() {
   });
   refreshStoreView();
   refreshOverview();
+  emitDataChanged();
 }
 
 function resolveKeyType(key, keyField = STORE_CONFIG[currentStore]?.keyField) {
@@ -677,6 +680,7 @@ async function handleImportJson() {
     setStatus("Import complete. Refreshing view...");
     refreshOverview();
     refreshStoreView();
+    emitDataChanged();
   } catch (error) {
     console.error("Import failed", error);
     setStatus("Import failed. Check JSON format.", true);
@@ -739,4 +743,8 @@ function clearStore(db, storeName) {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+}
+
+function emitDataChanged() {
+  window.dispatchEvent(new Event("dataChanged"));
 }

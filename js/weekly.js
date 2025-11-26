@@ -4,6 +4,7 @@ import {
   createDailyTask,
   getLinkedTasksForWeeklyGoal,
   refreshDailyTasks,
+  getActiveDailyDate,
 } from "./daily.js";
 import { createRoutineTask, getRoutineTasks, refreshRoutineList } from "./routine.js";
 
@@ -221,23 +222,23 @@ async function handleAddWeeklyTask(button) {
   const typeSelect = listEl.querySelector(`[data-weekly-task-type='${goalId}']`);
   const dateInput = listEl.querySelector(`[data-weekly-task-date='${goalId}']`);
   const taskType = typeSelect ? typeSelect.value : "daily";
-  const today = todayString();
-  const selectedDate = dateInput?.value || today;
-  button.disabled = true;
-  try {
-    if (taskType === "routine") {
+    const today = todayString();
+    const selectedDate = dateInput?.value || today;
+    button.disabled = true;
+    try {
+      if (taskType === "routine") {
       await createRoutineTask(label, { weeklyGoalId: goalId, active: true, source: "weekly" });
       await refreshRoutineList();
-    } else {
-      await createDailyTask(label, {
-        source: "weekly",
-        weeklyGoalId: goalId,
-        date: selectedDate,
-      });
-      if (selectedDate === today) {
-        await refreshDailyTasks();
+      } else {
+        await createDailyTask(label, {
+          source: "weekly",
+          weeklyGoalId: goalId,
+          date: selectedDate,
+        });
+        if (selectedDate === getActiveDailyDate()) {
+          await refreshDailyTasks();
+        }
       }
-    }
     input.value = "";
     await renderGoalDailyTasks(goalId);
   } finally {

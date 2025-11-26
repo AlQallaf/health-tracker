@@ -33,6 +33,7 @@ export function initRoutineSection({ listElement }) {
   if (!routineListenerAttached) {
     window.addEventListener("routineUpdated", () => refreshRoutineList());
     window.addEventListener("dailyDateChanged", () => refreshRoutineList());
+    window.addEventListener("dataChanged", () => refreshRoutineList());
     routineListenerAttached = true;
   }
 
@@ -49,6 +50,8 @@ export async function ensureRoutineDefaults() {
 
 export async function refreshRoutineList() {
   if (!listEl) return;
+  const beforeTop = listEl.getBoundingClientRect().top;
+  const beforeScroll = window.scrollY;
   listEl.textContent = "Loading...";
   const [tasks, entry] = await Promise.all([
     getRoutineTasks(),
@@ -84,6 +87,11 @@ export async function refreshRoutineList() {
   });
 
   listEl.appendChild(fragment);
+  const afterTop = listEl.getBoundingClientRect().top;
+  const delta = afterTop - beforeTop;
+  if (Math.abs(delta) > 1) {
+    window.scrollTo({ top: beforeScroll + delta });
+  }
 }
 
 export async function getRoutineTasks({ includeInactive = false } = {}) {

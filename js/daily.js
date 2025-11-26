@@ -61,6 +61,7 @@ export function initDailyTasksSection({
   if (!progressListenerAttached) {
     window.addEventListener("routineUpdated", () => renderDailyProgress());
     window.addEventListener("dailyDateChanged", () => renderDailyProgress());
+    window.addEventListener("dataChanged", () => refreshDailyTasks());
     progressListenerAttached = true;
   }
 
@@ -69,6 +70,9 @@ export function initDailyTasksSection({
 
 export async function refreshDailyTasks() {
   if (!listEl) return;
+  const beforeTop = listEl.getBoundingClientRect().top;
+  const beforeScroll = window.scrollY;
+
   const tasks = await fetchDailyTasks(activeDate);
 
   listEl.innerHTML = "";
@@ -79,35 +83,40 @@ export async function refreshDailyTasks() {
     empty.textContent = "No tasks yet.";
     listEl.appendChild(empty);
     renderDailyProgress();
-    return;
+  } else {
+    const fragment = document.createDocumentFragment();
+
+    tasks.forEach((task) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "daily-task-item";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = Boolean(task.done);
+      checkbox.dataset.taskId = task.id;
+
+      const label = document.createElement("span");
+      label.textContent = task.label;
+
+      const time = document.createElement("span");
+      time.className = "task-date";
+      time.textContent = task.time || "";
+
+      wrapper.appendChild(checkbox);
+      wrapper.appendChild(label);
+      if (task.time) wrapper.appendChild(time);
+      fragment.appendChild(wrapper);
+    });
+
+    listEl.appendChild(fragment);
+    renderDailyProgress();
   }
 
-  const fragment = document.createDocumentFragment();
-
-  tasks.forEach((task) => {
-    const wrapper = document.createElement("div");
-    wrapper.className = "daily-task-item";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = Boolean(task.done);
-    checkbox.dataset.taskId = task.id;
-
-  const label = document.createElement("span");
-  label.textContent = task.label;
-
-  const time = document.createElement("span");
-  time.className = "task-date";
-  time.textContent = task.time || "";
-
-    wrapper.appendChild(checkbox);
-    wrapper.appendChild(label);
-    if (task.time) wrapper.appendChild(time);
-    fragment.appendChild(wrapper);
-  });
-
-  listEl.appendChild(fragment);
-  renderDailyProgress();
+  const afterTop = listEl.getBoundingClientRect().top;
+  const delta = afterTop - beforeTop;
+  if (Math.abs(delta) > 1) {
+    window.scrollTo({ top: beforeScroll + delta });
+  }
 }
 
 export async function updateRoutineCompletion(
@@ -205,6 +214,7 @@ async function handleAddTask() {
   if (hourSelectEl) hourSelectEl.value = "09";
   if (minuteSelectEl) minuteSelectEl.value = "00";
   refreshDailyTasks();
+  emitDataChanged();
 }
 
 async function toggleDailyTask(taskId, done) {
@@ -225,6 +235,7 @@ async function toggleDailyTask(taskId, done) {
     tx.onerror = () => reject(tx.error);
   });
   renderDailyProgress();
+  emitDataChanged();
 }
 
 async function ensureDailyEntry(date = activeDate || todayString()) {
@@ -413,6 +424,10 @@ function buildTimeFromSelectors(hourSelect, minuteSelect) {
   const mm = minuteSelect?.value || "";
   if (!hh || !mm) return "";
   return `${hh}:${mm}`;
+}
+
+function emitDataChanged() {
+  window.dispatchEvent(new Event("dataChanged"));
 }
 
 async function fetchRoutineTasksForProgress() {
