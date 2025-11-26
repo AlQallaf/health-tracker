@@ -190,18 +190,21 @@ async function requestDayPlan({ date, tasks, notes, language }) {
 }
 
 function parsePlanResponse(text) {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start !== -1 && end !== -1 && end > start) {
-    const jsonString = text.slice(start, end + 1);
+  const cleaned = stripCodeFence(text || "");
+  const jsonCandidate = extractJson(cleaned);
+  if (jsonCandidate) {
     try {
-      return JSON.parse(jsonString);
+      const parsed = JSON.parse(jsonCandidate);
+      const tasks = normalizeParsedTasks(parsed);
+      if (tasks.length) return { tasks };
     } catch (error) {
       console.warn("Failed to parse JSON", error);
     }
   }
-  const tasks = text
-    .split(/\n|•|-/)
+
+  // Final fallback: split into lines/bullets and build tasks
+  const tasks = cleaned
+    .split(/\n|•|-|;/)
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => ({ label: line, time: "", notes: "" }));
@@ -298,4 +301,26 @@ function composeLabel(task) {
   if (task.label) parts.push(task.label);
   if (task.notes) parts.push(`(${task.notes})`);
   return parts.join(" ").trim();
+}
+
+function stripCodeFence(text) {
+  return text.replace(/```json/gi, "").replace(/```/g, "").trim();
+}
+
+function extractJson(text) {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    return text.slice(start, end + 1);
+  }
+  return "";
+}
+
+function normalizeParsedTasks(parsed) {
+  // Handle { tasks: [...] } or array directly
+  const candidate =
+    Array.isArray(parsed) ? parsed : Array.isArray(parsed?.tasks) ? parsed.tasks : [];
+  return candidate
+    .map((t) => normalizeTask(t))
+    .filter((t) => t.label && t.label.trim().length > 0);
 }

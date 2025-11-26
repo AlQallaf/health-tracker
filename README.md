@@ -20,6 +20,9 @@ js/
   dayPlanner.js     # AI day planner modal & plan editor
   settings.js       # App settings store (Gemini API key)
   setup.js          # Setup tab logic (Gemini key form)
+tests/
+  test-runner.html  # Browser-based runner against a test IndexedDB
+  test-runner.js    # Test definitions + reset helpers
   ai/
     ui.js           # Floating AI panel (Health Coach)
     healthCoach.js  # Prompt builders + fallbacks
@@ -35,7 +38,8 @@ icons/              # PWA icons
 1. **Daily Tab**
    - Routine checklist with daily completion stored per day; switch the date picker to review other days.
    - Daily tasks list with inline add/delete and checkbox state.
-   - **AI Day Planner** button: opens a modal to enter tasks/context, calls Gemini to get a JSON day plan in EN/AR, lets the user edit/approve/delete each proposed task, and converts approved ones into actual daily tasks.
+   - Daily progress rings always visible (0% when empty) for tasks and routine completion on the selected day.
+   - **AI Day Planner** button: opens a modal to enter tasks/context, calls Gemini to get a JSON day plan in EN/AR, lets the user edit/approve/delete each proposed task, and converts approved ones into actual daily tasks on the chosen date (not just today).
 
 2. **Weekly Tab**
    - Add/edit weekly goals with collapsible details.
@@ -50,12 +54,13 @@ icons/              # PWA icons
 
 7. **Data Tab**
    - Full data maintenance page with per-store counts, browsing/editing, clearing stores, and exporting all IndexedDB data.
+   - Backup & Migration textarea: copy the entire DB JSON with one click or paste JSON to import/replace all stores.
 
 5. **Floating AI Button**
    - Opens Health Coach panel (daily/weekly/monthly/motivation prompts) on any tab with EN/AR toggle.
 
 6. **Offline Support**
-   - Service worker caches CSS, JS, icons, AI modules, day planner, settings, etc. (`health-tracker-cache-v5`).
+   - Service worker caches CSS, JS, icons, AI modules, day planner, settings, tests runner, etc. (versioned cache, currently `v26`).
 
 ## Gemini API Key Flow
 
@@ -90,7 +95,7 @@ icons/              # PWA icons
 
 - Open `tests/test-runner.html` via your local static server to run a small suite against a separate test IndexedDB (`healthProgressTracker_test`), keeping real data untouched.
 - Use **Run Tests** to execute and **Reset Test DB** if you want a clean slate between runs.
-- Each test shows its scenario, expected behavior, and pass/fail status.
+- Each test shows its scenario, expected behavior, and pass/fail status. Current coverage: store creation, daily task CRUD, routine completions, weekly→daily linking, export/import round-trip, routine active filter, linked tasks sorting by date, Gemini key save/get, and AI-created tasks honoring the selected date.
 
 ## How to Continue in Next Session
 
