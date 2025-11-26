@@ -9,6 +9,7 @@ import { initRoutineManager } from "./routineManager.js";
 import { openAiPanel } from "./ai/ui.js";
 import { initDayPlanner } from "./dayPlanner.js";
 import { initSetupForms } from "./setup.js";
+import { initLabelScanner } from "./labelScanner.js";
 
 async function bootstrap() {
   try {
@@ -50,6 +51,9 @@ async function bootstrap() {
       geminiSaveBtn: document.getElementById("saveGeminiKeyBtn"),
       geminiTestBtn: document.getElementById("testGeminiKeyBtn"),
       geminiStatus: document.getElementById("geminiKeyStatus"),
+      labelFileInput: document.getElementById("labelFileInput"),
+      labelAnalyzeBtn: document.getElementById("labelAnalyzeBtn"),
+      labelResults: document.getElementById("labelResults"),
     };
 
     await ensureRoutineDefaults();
@@ -101,6 +105,7 @@ async function bootstrap() {
       testBtn: elements.geminiTestBtn,
       statusEl: elements.geminiStatus,
     });
+    initLabelScanner();
     registerServiceWorker();
   } catch (error) {
     console.error("Error bootstrapping Health Progress Tracker", error);

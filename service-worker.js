@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = "health-tracker-cache-v40";
+const CACHE_NAME = "health-tracker-cache-v42";
 
 const ASSETS = [
   // NOTE: no "/" or "./" here – they caused duplicate URL requests
@@ -16,6 +16,7 @@ const ASSETS = [
   "./js/routineManager.js",
   "./js/dataManager.js",
   "./js/dayPlanner.js",
+  "./js/labelScanner.js",
   "./js/settings.js",
   "./js/setup.js",
   "./js/ai/modelLoader.js",

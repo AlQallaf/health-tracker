@@ -57,11 +57,14 @@ icons/              # PWA icons
    - Backup & Migration textarea: copy the entire DB JSON with one click or paste JSON to import/replace all stores.
    - Stores include `dailyTasks` (time-aware tasks) plus `dailyEntries` for routine completions.
 
+8. **Label Scanner Tab**
+   - Upload or snap a label photo; AI extracts ingredients and tags each as Good/Bad/Neutral/Unknown with brief notes.
+
 5. **Floating AI Button**
    - Opens Health Coach panel (daily/weekly/monthly/motivation prompts) on any tab with EN/AR toggle.
 
 6. **Offline Support**
-   - Service worker caches CSS, JS, icons, AI modules, day planner, settings, tests runner, etc. (versioned cache, currently `v30`).
+   - Service worker caches CSS, JS, icons, AI modules, day planner, label scanner, settings, tests runner, etc. (versioned cache, currently `v41`).
 
 ## Gemini API Key Flow
 

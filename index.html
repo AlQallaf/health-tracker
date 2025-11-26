@@ -17,6 +17,7 @@
       <button class="tab" data-tab-target="monthly">Monthly</button>
       <button class="tab" data-tab-target="data">Data</button>
       <button class="tab" data-tab-target="routineManage">Setup</button>
+      <button class="tab" data-tab-target="scanner">Label Scanner</button>
     </div>
 
     <main class="container">
@@ -231,6 +232,41 @@
           <div id="dataStoreList" class="data-store-list">
             Select a store to inspect its data.
           </div>
+        </div>
+      </section>
+
+      <section class="section" data-tab-section="scanner">
+        <div class="card">
+          <div class="card-title">
+            <h2>Label Scanner</h2>
+          </div>
+          <p class="muted-text">
+            Upload or snap a photo of a product label. AI will extract ingredients and tag their
+            health effects.
+          </p>
+          <div class="label-controls">
+            <label class="file-drop" for="labelFileInput">
+              <span id="labelFileName">Choose or drop an image</span>
+              <input type="file" id="labelFileInput" accept="image/*" capture="environment" />
+            </label>
+            <button class="btn secondary" id="labelAnalyzeBtn">Analyze</button>
+          </div>
+          <div class="label-controls">
+            <label class="checkbox-item">
+              <select id="labelLanguage" aria-label="Response language">
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+              </select>
+            </label>
+            <input
+              type="text"
+              id="labelContext"
+              placeholder="Optional context (e.g., Snack bar, Face cream)"
+              aria-label="Extra context"
+            />
+          </div>
+          <div id="labelStatus" class="muted-text"></div>
+          <div id="labelResults" class="label-results">No analysis yet.</div>
         </div>
       </section>
     </main>

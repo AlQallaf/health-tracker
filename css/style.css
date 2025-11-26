@@ -29,6 +29,13 @@ header {
   display: flex;
   background: #fff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
@@ -1027,6 +1034,93 @@ header {
 
 .ai-week-entry textarea {
   min-height: 80px;
+}
+
+.label-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.file-drop {
+  flex: 1;
+  border: 1px dashed #b8c4ff;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f7f8ff;
+  cursor: pointer;
+  color: #2f3a70;
+}
+
+.file-drop input[type="file"] {
+  display: none;
+}
+
+.label-results {
+  border: 1px solid #e1e1e1;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fafafa;
+  min-height: 60px;
+}
+
+.label-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #e5e7f3;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.label-name {
+  font-weight: 600;
+}
+
+.label-note {
+  grid-column: 1 / -1;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.label-effect {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.label-good {
+  background: #e1f7ea;
+  color: #0b7a3f;
+}
+
+.label-bad {
+  background: #ffe6e6;
+  color: #b30021;
+}
+
+.label-neutral {
+  background: #f0f2ff;
+  color: #2f3a70;
+}
+
+.label-unknown {
+  background: #f6f6f6;
+  color: #666;
 }
 
 .floating-ai-btn {
