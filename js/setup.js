@@ -1,50 +1,84 @@
 // setup.js
-import { saveGeminiKey, getGeminiKey } from "./settings.js";
-import { setCachedGeminiKey } from "./ai/modelLoader.js";
+import { saveGeminiConfig, getGeminiConfig } from "./settings.js";
+import { setCachedGeminiKey, setCachedGeminiModel } from "./ai/modelLoader.js";
 
-export function initSetupForms({ input, saveBtn, testBtn, statusEl }) {
-  if (!input || !saveBtn || !testBtn) return;
+export function initSetupForms({ input, modelSelect, saveBtn, testBtn, statusEl }) {
+  if (!input || !saveBtn || !testBtn || !modelSelect) return;
 
-  // Load stored key on startup and hydrate the model loader cache
-  getGeminiKey()
-    .then((value) => {
-      if (value) {
-        input.value = value;
-        setCachedGeminiKey(value);
+  // Load stored config on startup and hydrate the model loader cache
+  getGeminiConfig()
+    .then((config) => {
+      if (config.geminiApiKey) {
+        input.value = config.geminiApiKey;
+        setCachedGeminiKey(config.geminiApiKey);
+        loadModels(config.geminiApiKey, modelSelect, config.geminiModel, statusEl);
       }
     })
-    .catch((error) => console.error("Failed to load Gemini key", error));
+    .catch((error) => console.error("Failed to load Gemini config", error));
 
   saveBtn.addEventListener("click", async () => {
-    const value = input.value.trim();
+    const key = input.value.trim();
+    const model = modelSelect.value;
     try {
-      await saveGeminiKey(value);
-      setCachedGeminiKey(value);
-      showStatus(statusEl, "API key saved locally.");
+      await saveGeminiConfig({ key, model });
+      setCachedGeminiKey(key);
+      setCachedGeminiModel(model);
+      showStatus(statusEl, "API key and model saved locally.");
     } catch (error) {
-      console.error("Failed to save key", error);
-      showStatus(statusEl, "Unable to save the key.", true);
+      console.error("Failed to save config", error);
+      showStatus(statusEl, "Unable to save the configuration.", true);
     }
   });
 
   testBtn.addEventListener("click", async () => {
-    const value = input.value.trim();
-    if (!value) {
+    const key = input.value.trim();
+    if (!key) {
       showStatus(statusEl, "Enter a key first.", true);
       return;
     }
-    try {
-      const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models?key=" +
-          encodeURIComponent(value)
-      );
-      if (!response.ok) throw new Error("Gemini rejected the key");
-      showStatus(statusEl, "Key looks valid!", false);
-    } catch (error) {
-      console.error(error);
-      showStatus(statusEl, "Key test failed. Double-check it.", true);
-    }
+    await loadModels(key, modelSelect, modelSelect.value || "", statusEl, true);
   });
+}
+
+async function loadModels(key, selectEl, currentModel, statusEl, showStatusOnly = false) {
+  selectEl.innerHTML = `<option value="">Loading models...</option>`;
+  try {
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models?key=" +
+        encodeURIComponent(key)
+    );
+    if (!response.ok) throw new Error("Gemini rejected the key");
+    const data = await response.json();
+    const models = (data.models || []).filter((m) =>
+      Array.isArray(m.supportedGenerationMethods)
+        ? m.supportedGenerationMethods.includes("generateContent")
+        : true
+    );
+    if (!models.length) throw new Error("No compatible models found.");
+
+    selectEl.innerHTML = "";
+    models.forEach((m) => {
+      const option = document.createElement("option");
+      option.value = m.name || "";
+      option.textContent = m.displayName || m.name || "";
+      if (option.value === currentModel) option.selected = true;
+      selectEl.appendChild(option);
+    });
+
+    if (!selectEl.value) selectEl.value = models[0].name;
+    if (!showStatusOnly) {
+      showStatus(
+        statusEl,
+        `Loaded ${models.length} models. Selected: ${selectEl.selectedOptions[0].textContent}`
+      );
+    } else {
+      showStatus(statusEl, "Key looks valid. Models loaded.");
+    }
+  } catch (error) {
+    console.error("Model load failed", error);
+    selectEl.innerHTML = `<option value="">Unable to load models</option>`;
+    showStatus(statusEl, "Model load failed. Check key.", true);
+  }
 }
 
 function showStatus(el, message, error = false) {

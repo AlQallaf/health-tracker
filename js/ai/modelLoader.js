@@ -1,12 +1,12 @@
 // modelLoader.js
 // Single place where we talk to Gemini from the browser.
 
-import { getGeminiKey } from "../settings.js";
+import { getGeminiKey, getGeminiModel } from "../settings.js";
 
-const GEMINI_ENDPOINT =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const DEFAULT_MODEL = "models/gemini-2.0-flash-001";
 
 let cachedKey = "";
+let cachedModel = "";
 
 // prompt = { system, user }
 // options = { temperature?, maxTokens?, topP? }
@@ -48,12 +48,13 @@ export async function callGemini(prompt, options = {}, _retry = false) {
     },
   };
 
-  const apiKey = await loadGeminiKey();
+  const [apiKey, model] = await Promise.all([loadGeminiKey(), loadGeminiModel()]);
   if (!apiKey) {
     throw new Error("Gemini API key missing. Add it from the Setup page.");
   }
+  const endpoint = buildEndpoint(model);
 
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+  const response = await fetch(`${endpoint}?key=${apiKey}`, {
     method: "POST",
     mode: "cors",
     cache: "no-store",
@@ -125,4 +126,26 @@ async function loadGeminiKey() {
 
 export function setCachedGeminiKey(value) {
   cachedKey = value;
+}
+
+async function loadGeminiModel() {
+  if (!cachedModel) {
+    const model = await getGeminiModel();
+    cachedModel = normalizeModelName(model) || DEFAULT_MODEL;
+  }
+  return cachedModel;
+}
+
+export function setCachedGeminiModel(value) {
+  cachedModel = normalizeModelName(value) || DEFAULT_MODEL;
+}
+
+function normalizeModelName(name) {
+  if (!name) return "";
+  return name.startsWith("models/") ? name : `models/${name}`;
+}
+
+function buildEndpoint(modelName) {
+  const safe = normalizeModelName(modelName) || DEFAULT_MODEL;
+  return `https://generativelanguage.googleapis.com/v1beta/${safe}:generateContent`;
 }

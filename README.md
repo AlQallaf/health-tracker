@@ -51,6 +51,7 @@ icons/              # PWA icons
 4. **Setup Tab**
    - Routine manager.
    - **Gemini API Configuration** card: save/test API key stored locally via IndexedDB (`appSettings` → `appConfig`).
+   - Model selector loads available Gemini models from your key; selection applies across all AI features.
 
 7. **Data Tab**
    - Full data maintenance page with per-store counts, browsing/editing, clearing stores, and exporting all IndexedDB data.

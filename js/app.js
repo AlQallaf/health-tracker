@@ -48,6 +48,7 @@ async function bootstrap() {
       dataImportStatus: document.getElementById("dataImportStatus"),
       monthlyContent: document.getElementById("monthlyContent"),
       geminiKeyInput: document.getElementById("geminiApiKeyInput"),
+      geminiModelSelect: document.getElementById("geminiModelSelect"),
       geminiSaveBtn: document.getElementById("saveGeminiKeyBtn"),
       geminiTestBtn: document.getElementById("testGeminiKeyBtn"),
       geminiStatus: document.getElementById("geminiKeyStatus"),
@@ -101,6 +102,7 @@ async function bootstrap() {
     });
     initSetupForms({
       input: elements.geminiKeyInput,
+      modelSelect: elements.geminiModelSelect,
       saveBtn: elements.geminiSaveBtn,
       testBtn: elements.geminiTestBtn,
       statusEl: elements.geminiStatus,
