@@ -1,5 +1,9 @@
 // db.js
-const DB_NAME = "healthProgressTracker";
+const DEFAULT_DB_NAME = "healthProgressTracker";
+const DB_NAME =
+  typeof window !== "undefined" && window.__DB_NAME_OVERRIDE__
+    ? window.__DB_NAME_OVERRIDE__
+    : DEFAULT_DB_NAME;
 // ⬅️ bump version so onupgradeneeded runs and creates appSettings for old DBs
 const DB_VERSION = 2;
 
@@ -46,6 +50,13 @@ export function initDB() {
 
 export function getDB() {
   return initDB();
+}
+
+export function resetDB() {
+  if (dbPromise) {
+    dbPromise.then((db) => db?.close()).catch(() => {});
+  }
+  dbPromise = null;
 }
 
 function ensureStore(db, name, options) {

@@ -117,7 +117,7 @@ function buildModal() {
         language: currentLang,
       });
       planTasks = Array.isArray(plan.tasks)
-        ? plan.tasks.map(normalizeTask)
+        ? plan.tasks.map((t) => ({ ...normalizeTask(t), plannedDate: date }))
         : [];
       planDate = date;
       planLanguage = currentLang;
@@ -213,6 +213,7 @@ function normalizeTask(task) {
     label: (task.label || task.title || task.goal || "").trim(),
     time: (task.time || task.duration || "").trim(),
     notes: (task.notes || task.tip || "").trim(),
+    plannedDate: task.plannedDate,
   };
 }
 
@@ -267,9 +268,10 @@ function renderPlan() {
     approveBtn.textContent = "Approve";
     approveBtn.addEventListener("click", async () => {
       if (!planTasks[index].label) return;
+      const targetDate = planTasks[index].plannedDate || planDate || todayString();
       await createDailyTask(composeLabel(planTasks[index]), {
         source: "ai",
-        date: planDate,
+        date: targetDate,
       });
       planTasks.splice(index, 1);
       renderPlan();

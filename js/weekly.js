@@ -364,7 +364,7 @@ function updateWeeklySummaryFromDOM(goalId) {
   updateWeeklySummary(goalId);
 }
 
-async function fetchWeeklyGoals() {
+export async function fetchWeeklyGoals() {
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction("weeklyGoals", "readonly");

@@ -139,7 +139,7 @@ header {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: conic-gradient(#0047b3 0%, #e7ebff 0%);
+  background: conic-gradient(#00b351 0%, #e7ebff 0%);
   display: grid;
   place-items: center;
   box-shadow: inset 0 0 0 6px #fff;
@@ -674,6 +674,18 @@ header {
   color: #0047b3;
 }
 
+.data-export-textarea {
+  width: 100%;
+  min-height: 160px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #cfd6ff;
+  background: #f9faff;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
 .data-actions {
   display: flex;
   gap: 8px;
@@ -994,6 +1006,12 @@ header {
 
 .floating-ai-btn:active {
   transform: scale(0.96);
+}
+
+.no-tasks {
+  padding: 8px;
+  color: #7a7a7a;
+  font-size: 14px;
 }
 
 @media (max-width: 600px) {

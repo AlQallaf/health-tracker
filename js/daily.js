@@ -43,7 +43,9 @@ export function initDailyTasksSection({
   }
 
   listEl.addEventListener("change", (event) => {
-    const checkbox = event.target.closest("input[type='checkbox'][data-task-id]");
+    const checkbox = event.target.closest(
+      "input[type='checkbox'][data-task-id]"
+    );
     if (!checkbox) return;
     toggleDailyTask(checkbox.dataset.taskId, checkbox.checked);
   });
@@ -59,15 +61,23 @@ export function initDailyTasksSection({
 
 export async function refreshDailyTasks() {
   if (!listEl) return;
+
   const entry = await fetchDailyEntry(activeDate);
   const tasks = Array.isArray(entry?.tasks) ? entry.tasks : [];
 
+  listEl.innerHTML = "";
+
   if (tasks.length === 0) {
-    listEl.textContent = "No tasks yet.";
+    const empty = document.createElement("div");
+    empty.className = "no-tasks";
+    empty.textContent = "No tasks yet.";
+    listEl.appendChild(empty);
+
+    // ⭐ IMPORTANT: still render progress rings
+    renderDailyProgress();
     return;
   }
 
-  listEl.innerHTML = "";
   const fragment = document.createDocumentFragment();
 
   tasks.forEach((task) => {
@@ -88,6 +98,8 @@ export async function refreshDailyTasks() {
   });
 
   listEl.appendChild(fragment);
+
+  // Always update rings
   renderDailyProgress();
 }
 
@@ -100,7 +112,9 @@ export async function updateRoutineCompletion(
   entry.routineCompletions = Array.isArray(entry.routineCompletions)
     ? entry.routineCompletions
     : [];
-  const existing = entry.routineCompletions.find((item) => item.id === routineId);
+  const existing = entry.routineCompletions.find(
+    (item) => item.id === routineId
+  );
   if (existing) {
     existing.done = done;
   } else {
@@ -122,7 +136,11 @@ export async function fetchDailyEntry(date = todayString()) {
 
 export async function createDailyTask(
   label,
-  { source = "adhoc", weeklyGoalId = null, date = activeDate || todayString() } = {}
+  {
+    source = "adhoc",
+    weeklyGoalId = null,
+    date = activeDate || todayString(),
+  } = {}
 ) {
   const entry = await ensureDailyEntry(date);
   entry.tasks = Array.isArray(entry.tasks) ? entry.tasks : [];
@@ -234,11 +252,20 @@ export function setActiveDailyDate(nextDate) {
 
 async function renderDailyProgress() {
   if (!progressEl) return;
-  progressEl.textContent = "Loading...";
-  const [entry, routineTasks] = await Promise.all([
-    fetchDailyEntry(activeDate),
-    fetchRoutineTasksForProgress(),
-  ]);
+
+  let entry = { tasks: [], routineCompletions: [] };
+  let routineTasks = [];
+
+  try {
+    const [fetchedEntry, fetchedRoutines] = await Promise.all([
+      fetchDailyEntry(activeDate),
+      fetchRoutineTasksForProgress(),
+    ]);
+    entry = fetchedEntry || entry;
+    routineTasks = fetchedRoutines || [];
+  } catch (error) {
+    console.error("Progress fetch error", error);
+  }
 
   const tasks = Array.isArray(entry?.tasks) ? entry.tasks : [];
   const taskDone = tasks.filter((t) => t.done).length;
@@ -246,21 +273,20 @@ async function renderDailyProgress() {
   const routineCompletions = Array.isArray(entry?.routineCompletions)
     ? entry.routineCompletions
     : [];
-  const routineDone = routineTasks.reduce((count, task) => {
+  const routineDone = (routineTasks || []).reduce((count, task) => {
     const completion = routineCompletions.find((item) => item.id === task.id);
     return count + (completion?.done ? 1 : 0);
   }, 0);
 
   const rings = [
-    { label: "Tasks", done: taskDone, total: tasks.length, color: "#0047b3" },
-    { label: "Routine", done: routineDone, total: routineTasks.length, color: "#0d9f6a" },
+    { label: "Tasks", done: taskDone, total: tasks.length, color: "#24a83cff" },
+    {
+      label: "Routine",
+      done: routineDone,
+      total: routineTasks?.length || 0,
+      color: "#24a83cff",
+    },
   ];
-
-  const hasData = rings.some((ring) => ring.total > 0);
-  if (!hasData) {
-    progressEl.textContent = "No items yet for this day.";
-    return;
-  }
 
   progressEl.innerHTML = "";
   rings.forEach((ring) => {
@@ -297,17 +323,22 @@ function buildRing({ label, done, total, color }) {
 }
 
 async function fetchRoutineTasksForProgress() {
-  const db = await getDB();
-  const profile = getCurrentProfile();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("routineTasks", "readonly");
-    const request = tx.objectStore("routineTasks").getAll();
-    request.onsuccess = () => {
-      const tasks = (request.result || []).filter(
-        (task) => task.profile === profile && task.active !== false
-      );
-      resolve(tasks);
-    };
-    request.onerror = () => reject(request.error);
-  });
+  try {
+    const db = await getDB();
+    const profile = getCurrentProfile();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction("routineTasks", "readonly");
+      const request = tx.objectStore("routineTasks").getAll();
+      request.onsuccess = () => {
+        const tasks = (request.result || []).filter(
+          (task) => task.profile === profile && task.active !== false
+        );
+        resolve(tasks);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error("Routine progress fetch failed", error);
+    return [];
+  }
 }

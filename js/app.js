@@ -39,6 +39,10 @@ async function bootstrap() {
       dataRefreshBtn: document.getElementById("dataRefreshBtn"),
       dataClearStoreBtn: document.getElementById("dataClearStoreBtn"),
       dataExportBtn: document.getElementById("dataExportBtn"),
+      dataExportInput: document.getElementById("dataExportInput"),
+      dataCopyJsonBtn: document.getElementById("dataCopyJsonBtn"),
+      dataImportJsonBtn: document.getElementById("dataImportJsonBtn"),
+      dataImportStatus: document.getElementById("dataImportStatus"),
       monthlyContent: document.getElementById("monthlyContent"),
       geminiKeyInput: document.getElementById("geminiApiKeyInput"),
       geminiSaveBtn: document.getElementById("saveGeminiKeyBtn"),
@@ -76,6 +80,10 @@ async function bootstrap() {
       refreshButton: elements.dataRefreshBtn,
       clearButton: elements.dataClearStoreBtn,
       exportButton: elements.dataExportBtn,
+      exportTextarea: elements.dataExportInput,
+      copyButton: elements.dataCopyJsonBtn,
+      importButton: elements.dataImportJsonBtn,
+      statusElement: elements.dataImportStatus,
     });
     wireAiAssistant([elements.launchAiCoach, elements.floatingAiBtn]);
     initDayPlanner({

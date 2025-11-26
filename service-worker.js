@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = "health-tracker-cache-v14";
+const CACHE_NAME = "health-tracker-cache-v26";
 
 const ASSETS = [
   // NOTE: no "/" or "./" here – they caused duplicate URL requests
@@ -22,6 +22,8 @@ const ASSETS = [
   "./js/ai/chat.js",
   "./js/ai/healthCoach.js",
   "./js/ai/ui.js",
+  "./tests/test-runner.html",
+  "./tests/test-runner.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -62,26 +64,29 @@ self.addEventListener("fetch", (event) => {
   // 1) NAVIGATION REQUESTS (PWA launch, address bar, reload)
   //    Offline-first: if we have index.html cached, always serve it.
   if (request.mode === "navigate") {
-    event.respondWith(
-      caches.match("./index.html").then((cached) => {
-        if (cached) {
-          // Serve cached app shell; avoids ngrok error pages replacing the app
-          return cached;
-        }
+    const url = new URL(request.url);
+    // Allow test runner navigations to load directly (no SPA shell)
+    if (url.pathname.includes("/tests/")) {
+      event.respondWith(
+        fetch(request).catch(() =>
+          caches.match(request).then((cached) => cached || caches.match("./tests/test-runner.html"))
+        )
+      );
+      return;
+    }
 
-        // First load / no cache yet: try network once to prime the cache
-        return fetch("./index.html")
-          .then((response) => {
-            if (response && response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put("./index.html", clone);
-              });
-            }
-            return response;
-          })
-          .catch(() => caches.match("./index.html"));
-      })
+    // For app navigations, prefer network for the actual request; fall back to cached index.html.
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok && response.type === "basic") {
+            caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", response.clone()));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match("./index.html").then((cached) => cached || Response.error())
+        )
     );
     return;
   }

@@ -86,6 +86,12 @@ icons/              # PWA icons
 2. Open the site, go to the Setup tab, paste your Gemini API key, and hit Save (and optionally Test).
 3. Use the floating AI button or AI Day Planner; the app will cache assets for offline use once loaded online.
 
+## Local Tests (browser-based)
+
+- Open `tests/test-runner.html` via your local static server to run a small suite against a separate test IndexedDB (`healthProgressTracker_test`), keeping real data untouched.
+- Use **Run Tests** to execute and **Reset Test DB** if you want a clean slate between runs.
+- Each test shows its scenario, expected behavior, and pass/fail status.
+
 ## How to Continue in Next Session
 
 - Review this README for architecture/context.

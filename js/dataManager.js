@@ -13,6 +13,10 @@ let refreshBtn;
 let clearBtn;
 let exportBtn;
 let overviewEl;
+let exportTextarea;
+let copyBtn;
+let importBtn;
+let statusEl;
 let currentStore = "monthlyGoals";
 const DAILY_STORE = "dailyEntries";
 
@@ -23,6 +27,10 @@ export function initDataManager({
   refreshButton,
   clearButton,
   exportButton,
+  exportTextarea: exportTextareaElement,
+  copyButton,
+  importButton,
+  statusElement,
 }) {
   overviewEl = overviewElement;
   selectEl = selectElement;
@@ -30,6 +38,10 @@ export function initDataManager({
   refreshBtn = refreshButton;
   clearBtn = clearButton;
   exportBtn = exportButton;
+  exportTextarea = exportTextareaElement;
+  copyBtn = copyButton;
+  importBtn = importButton;
+  statusEl = statusElement;
 
   if (!selectEl || !listEl) return;
 
@@ -44,6 +56,8 @@ export function initDataManager({
   refreshBtn?.addEventListener("click", refreshStoreView);
   clearBtn?.addEventListener("click", handleClearStore);
   exportBtn?.addEventListener("click", handleExportAll);
+  copyBtn?.addEventListener("click", handleCopyJson);
+  importBtn?.addEventListener("click", handleImportJson);
 
   listEl.addEventListener("click", async (event) => {
     const saveBtn = event.target.closest("button[data-save-entry]");
@@ -565,9 +579,8 @@ async function handleClearStore() {
   refreshOverview();
 }
 
-function resolveKeyType(key) {
-  const meta = STORE_CONFIG[currentStore];
-  return meta.keyField === "id" ? Number(key) : key;
+function resolveKeyType(key, keyField = STORE_CONFIG[currentStore]?.keyField) {
+  return keyField === "id" ? Number(key) : key;
 }
 
 function parseFieldValue(rawValue) {
@@ -584,15 +597,9 @@ async function handleExportAll() {
   if (!exportBtn) return;
   exportBtn.disabled = true;
   try {
-    const db = await getDB();
-    const payload = {};
-    for (const store of Object.keys(STORE_CONFIG)) {
-      payload[store] = await new Promise((resolve, reject) => {
-        const tx = db.transaction(store, "readonly");
-        const req = tx.objectStore(store).getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
-      });
+    const payload = await gatherAllData();
+    if (exportTextarea) {
+      exportTextarea.value = JSON.stringify(payload, null, 2);
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
@@ -621,4 +628,114 @@ function formatFieldValue(value) {
     }
   }
   return String(value);
+}
+
+async function handleCopyJson() {
+  if (!exportTextarea) return;
+  try {
+    // Use existing textarea content if present; otherwise gather fresh data
+    let json = exportTextarea.value.trim();
+    if (!json) {
+      const payload = await gatherAllData();
+      json = JSON.stringify(payload, null, 2);
+      exportTextarea.value = json;
+    }
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(json);
+      setStatus("Copied JSON to clipboard.");
+    } else {
+      exportTextarea.select();
+      setStatus("Clipboard unavailable; select text and copy manually.");
+    }
+  } catch (error) {
+    console.error("Copy failed", error);
+    setStatus("Unable to copy data.", true);
+  }
+}
+
+async function handleImportJson() {
+  if (!exportTextarea) return;
+  const text = exportTextarea.value.trim();
+  if (!text) {
+    setStatus("Paste JSON before importing.", true);
+    return;
+  }
+  if (
+    !confirm(
+      "Importing will replace data in all stores with this JSON. Continue? (Make sure you exported a backup first.)"
+    )
+  ) {
+    return;
+  }
+  try {
+    const payload = JSON.parse(text);
+    if (typeof payload !== "object" || Array.isArray(payload) || !payload) {
+      throw new Error("JSON must be an object with store arrays.");
+    }
+    await importAllData(payload);
+    setStatus("Import complete. Refreshing view...");
+    refreshOverview();
+    refreshStoreView();
+  } catch (error) {
+    console.error("Import failed", error);
+    setStatus("Import failed. Check JSON format.", true);
+  }
+}
+
+async function gatherAllData() {
+  const db = await getDB();
+  const payload = {};
+  for (const store of Object.keys(STORE_CONFIG)) {
+    payload[store] = await new Promise((resolve, reject) => {
+      const tx = db.transaction(store, "readonly");
+      const req = tx.objectStore(store).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  return payload;
+}
+
+async function importAllData(payload) {
+  const db = await getDB();
+  const stores = Object.keys(STORE_CONFIG);
+  for (const store of stores) {
+    const items = Array.isArray(payload[store]) ? payload[store] : [];
+    await clearStore(db, store);
+    if (items.length === 0) continue;
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(store, "readwrite");
+      const os = tx.objectStore(store);
+      items.forEach((item) => {
+        os.put(normalizeEntry(store, item));
+      });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+}
+
+function normalizeEntry(storeName, entry) {
+  const meta = STORE_CONFIG[storeName];
+  if (!meta) return entry;
+  const normalized = { ...entry };
+  if (meta.keyField in normalized) {
+    normalized[meta.keyField] = resolveKeyType(normalized[meta.keyField], meta.keyField);
+  }
+  return normalized;
+}
+
+function setStatus(message, isError = false) {
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.style.color = isError ? "#b30000" : "#2f3a70";
+}
+
+function clearStore(db, storeName) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }

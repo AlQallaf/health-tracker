@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Health Progress Tracker – Tests</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f5f6fa;
+        margin: 0;
+        padding: 16px;
+        color: #222;
+      }
+      .container {
+        max-width: 920px;
+        margin: 0 auto;
+      }
+      header {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      button {
+        padding: 10px 16px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 700;
+        cursor: pointer;
+        background: #0047b3;
+        color: #fff;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+      }
+      .summary {
+        margin: 10px 0;
+        font-weight: 600;
+      }
+      .results {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .results li {
+        padding: 6px 8px;
+        border-bottom: 1px solid #eee;
+      }
+      .pass {
+        color: #0d6a45;
+      }
+      .fail {
+        color: #b30000;
+      }
+      pre {
+        background: #f8f9ff;
+        border: 1px solid #e0e6ff;
+        border-radius: 8px;
+        padding: 10px;
+        max-height: 240px;
+        overflow: auto;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>Health Progress Tracker – Local Test Runner</header>
+      <div class="controls">
+        <button id="runTestsBtn">Run Tests</button>
+        <button id="resetDbBtn" style="background:#6c757d;">Reset Test DB</button>
+      </div>
+      <div class="card">
+        <div id="summary" class="summary">No tests run yet.</div>
+        <ul id="results" class="results"></ul>
+        <pre id="log"></pre>
+      </div>
+
+    </div>
+    <script type="module" src="./test-runner.js"></script>
+  </body>
+</html>
