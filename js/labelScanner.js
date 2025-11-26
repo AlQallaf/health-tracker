@@ -126,13 +126,40 @@ function parseResponse(text) {
 }
 
 function normalizeItems(items) {
-  return items
+  const normalized = items
     .map((item) => ({
       name: (item.name || item.ingredient || "").trim(),
       effect: normalizeEffect(item.effect),
       note: (item.note || item.description || "").trim(),
     }))
     .filter((item) => item.name);
+
+  // Count per category
+  const counts = { bad: 0, neutral: 0, good: 0, unknown: 0 };
+  normalized.forEach((item) => {
+    const key = item.effect.toLowerCase();
+    if (key in counts) counts[key] += 1;
+    else counts.unknown += 1;
+  });
+
+  // Order categories by descending count (ties: Bad > Neutral > Good > Unknown)
+  const tieBreak = { bad: 3, neutral: 2, good: 1, unknown: 0 };
+  const ordered = Object.keys(counts).sort((a, b) => {
+    if (counts[b] !== counts[a]) return counts[b] - counts[a];
+    return tieBreak[b] - tieBreak[a];
+  });
+  const rank = ordered.reduce((acc, key, idx) => {
+    acc[key] = idx;
+    return acc;
+  }, {});
+
+  normalized.sort((a, b) => {
+    const ra = rank[a.effect.toLowerCase()] ?? rank.unknown;
+    const rb = rank[b.effect.toLowerCase()] ?? rank.unknown;
+    if (ra !== rb) return ra - rb;
+    return a.name.localeCompare(b.name);
+  });
+  return normalized;
 }
 
 function normalizeEffect(effect = "") {
