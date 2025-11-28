@@ -33,7 +33,7 @@ export function initLabelScanner() {
       setStatus(statusEl, "Asking Gemini...");
       const response = await analyzeLabel(dataUrl, {
         language: langSelect?.value || "en",
-        context: contextInput?.value || "",
+        context: contextInput?.value?.trim() || "",
       });
       renderResults(resultsEl, response);
       setStatus(statusEl, "Analysis complete.");
@@ -76,7 +76,7 @@ STRICT OCR MODE — ZERO HALLUCINATION RULES:
 
     user: prompt,
 
-    images: [
+      images: [
       {
         mimeType: "image/jpeg",
         data: dataUrl.split(",")[1],
@@ -91,18 +91,18 @@ STRICT OCR MODE — ZERO HALLUCINATION RULES:
   });
 
   const parsed = parseResponse(text);
-  return parsed;
+  return { ...parsed, context };
 }
 
 function buildPrompt(language = "en", context = "") {
   const langNote =
     language === "ar"
-      ? "Respond in Arabic, but effect words must stay in English."
-      : "Respond in English.";
+      ? "Respond in Arabic. Keep effect words Good/Bad/Neutral/Unknown in English."
+      : "Respond in English. Effect words remain Good/Bad/Neutral/Unknown.";
 
   const contextLine = context
-    ? `Product context: ${context}.`
-    : "Product context: general.";
+    ? `Product context provided by user: ${context}. Bias interpretation accordingly (e.g., topical vs edible, whole food vs processed).`
+    : "Product context: general (no extra info).";
 
   return `
 You will receive a product label image.
@@ -119,9 +119,10 @@ TASK:
    - Neutral
    - Unknown
 7. Keep notes short (<= 8 words), factual, no guesses.
-8. Output ONLY JSON in exactly this format:
+8. Also provide a 1-sentence summary describing what the product is and overall health view.
+9. Output ONLY JSON in exactly this format:
 
-{"ingredients":[{"name":"...","effect":"Good|Bad|Neutral|Unknown","note":"..."}],"nutrition":{"calories":number,"sugar_g":number,"sat_fat_g":number,"sodium_mg":number,"protein_g":number,"fiber_g":number}}
+{"summary":"...","ingredients":[{"name":"...","effect":"Good|Bad|Neutral|Unknown","note":"..."}],"nutrition":{"calories":number,"sugar_g":number,"sat_fat_g":number,"sodium_mg":number,"protein_g":number,"fiber_g":number}}
 
 ${contextLine}
 ${langNote}
@@ -132,39 +133,24 @@ function parseResponse(text) {
   const cleaned = stripCode(text || "");
 
   const parsedObj = tryParseJson(cleaned);
-  if (parsedObj?.ingredients?.length || parsedObj?.nutrition) {
+  if (isValidParsed(parsedObj)) {
     return {
+      summary: (parsedObj.summary || "").trim(),
       ingredients: normalizeItems(parsedObj.ingredients || []),
       nutrition: normalizeNutrition(parsedObj.nutrition || {}),
     };
   }
 
-  const parsedArray = tryParseIngredientArray(cleaned);
-  if (parsedArray?.length) {
-    return { ingredients: normalizeItems(parsedArray), nutrition: null };
+  const recovered = tryRecoverJson(cleaned);
+  if (isValidParsed(recovered)) {
+    return {
+      summary: (recovered.summary || "").trim(),
+      ingredients: normalizeItems(recovered.ingredients || []),
+      nutrition: normalizeNutrition(recovered.nutrition || {}),
+    };
   }
 
-  // Fallback: parse lines, trying JSON per line first
-  const ingredients = cleaned
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const asJson = tryParseJson(line);
-      if (asJson) {
-        const items = Array.isArray(asJson.ingredients)
-          ? asJson.ingredients
-          : [asJson];
-        return items[0];
-      }
-      const parts = line.split(/[-–—|]/).map((p) => p.trim());
-      return {
-        name: parts[0] || line,
-        effect: normalizeEffect(parts[1]),
-        note: parts.slice(2).join(" - "),
-      };
-    });
-  return { ingredients: normalizeItems(ingredients) };
+  throw new Error("Parsing failed. Please try another photo.");
 }
 
 function normalizeItems(items) {
@@ -256,6 +242,45 @@ function extractJson(text) {
   return "";
 }
 
+function isValidParsed(obj) {
+  if (!obj || typeof obj !== "object") return false;
+  const ingredients = Array.isArray(obj.ingredients) ? obj.ingredients : [];
+  const nutrition = obj.nutrition || null;
+  if (!ingredients.length && !nutrition) return false;
+  return true;
+}
+
+function tryRecoverJson(text) {
+  // Attempt to extract a top-level JSON object
+  const raw = extractJson(text);
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch {}
+  }
+  // Attempt to extract ingredients array
+  const ingMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+  const nutritionMatch = text.match(/\{"calories":[^}]*\}/);
+  let ingredients = [];
+  let nutrition = null;
+  if (ingMatch) {
+    try {
+      const parsedIng = JSON.parse(ingMatch[0]);
+      if (Array.isArray(parsedIng)) ingredients = parsedIng;
+    } catch {}
+  }
+  if (nutritionMatch) {
+    try {
+      const parsedNut = JSON.parse(nutritionMatch[0]);
+      nutrition = parsedNut;
+    } catch {}
+  }
+  if (ingredients.length || nutrition) {
+    return { ingredients, nutrition };
+  }
+  return null;
+}
+
 function tryParseJson(text) {
   const json = extractJson(text);
   if (!json) return null;
@@ -286,6 +311,13 @@ function renderResults(container, data) {
     container.textContent =
       "No readable ingredients or nutrition detected. Try a clearer photo.";
     return;
+  }
+
+  if (data.summary) {
+    const summaryBlock = document.createElement("div");
+    summaryBlock.className = "label-summary";
+    summaryBlock.textContent = data.summary;
+    container.appendChild(summaryBlock);
   }
 
   const { score, rating, percent } = computeHealthScore(
@@ -340,7 +372,7 @@ function computeHealthScore(ingredients, nutrition) {
   // Ingredient-only score
   const ingredientScore = (() => {
     if (!hasIngredients) return null;
-    const weights = { good: 1.5, neutral: 0, unknown: -0.5, bad: -2.5 };
+    const weights = { good: 1.5, neutral: 0, unknown: -0.25, bad: -2.5 };
     const total = ingredients.reduce((sum, item) => {
       const w = weights[item.effect?.toLowerCase()] ?? weights.unknown;
       return sum + w;
