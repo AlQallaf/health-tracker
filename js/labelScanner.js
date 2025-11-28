@@ -269,6 +269,12 @@ function renderResults(container, data) {
       "No readable ingredients detected. Try a clearer photo.";
     return;
   }
+
+  const { score, rating, percent, color, label } = computeHealthScore(
+    data.ingredients
+  );
+  container.appendChild(buildHealthRing(score, rating, percent));
+
   const list = document.createElement("div");
   list.className = "label-list";
   data.ingredients.forEach((item) => {
@@ -299,4 +305,65 @@ function setStatus(el, message, isError = false) {
   if (!el) return;
   el.textContent = message;
   el.style.color = isError ? "#b30000" : "#2f3a70";
+}
+
+function computeHealthScore(ingredients) {
+  if (!ingredients?.length)
+    return {
+      score: 5,
+      rating: "Caution",
+      percent: 50,
+      color: "#e6a700",
+      label: "Caution",
+    };
+  const weights = { good: 1.5, neutral: 0, unknown: -0.5, bad: -2.5 };
+  const total = ingredients.reduce((sum, item) => {
+    const w = weights[item.effect?.toLowerCase()] ?? weights.unknown;
+    return sum + w;
+  }, 0);
+  const avg = total / ingredients.length; // range roughly [-2.5, +1.5]
+  const score = Math.min(10, Math.max(0, ((avg + 2.5) / 4) * 10));
+  let rating = "Caution";
+  let color = "#e6a700";
+  if (score < 4) {
+    rating = "High Risk";
+    color = "#c1121f";
+  } else if (score > 7) {
+    rating = "Safer Choice";
+    color = "#0b7a3f";
+  }
+  const percent = Math.round(score * 10) / 10;
+  return { score, rating, percent, color, label: rating };
+}
+
+function buildHealthRing(score, rating, percent) {
+  const color =
+    rating === "Safer Choice" ? "#0b7a3f" : rating === "Caution" ? "#e6a700" : "#c1121f";
+  const ring = document.createElement("div");
+  ring.className = "health-ring";
+  ring.style.background = `conic-gradient(${color} 0%, #e7ebff 0%)`;
+
+  const value = document.createElement("div");
+  value.className = "health-ring-value";
+  value.textContent = percent.toFixed(1);
+
+  const label = document.createElement("div");
+  label.className = "health-ring-label";
+  label.textContent = rating;
+
+  ring.appendChild(value);
+  ring.appendChild(label);
+
+  requestAnimationFrame(() => {
+    ring.style.background = `conic-gradient(${color} ${percent * 10}%, #e7ebff ${percent * 10}%)`;
+  });
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "health-ring-wrapper";
+  const title = document.createElement("div");
+  title.className = "health-ring-title";
+  title.textContent = "Health Score";
+  wrapper.appendChild(title);
+  wrapper.appendChild(ring);
+  return wrapper;
 }
