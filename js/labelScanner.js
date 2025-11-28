@@ -85,7 +85,7 @@ STRICT OCR MODE — ZERO HALLUCINATION RULES:
   };
 
   const text = await callGemini(payload, {
-    maxTokens: 400,
+    maxTokens: 500,
     temperature: 0.0,
     topP: 0.1,
   });
@@ -111,16 +111,17 @@ TASK:
 1. Read ONLY the clearly visible ingredient text from the image.
 2. DO NOT add or guess any missing ingredients.
 3. Ingredient names must match the image EXACTLY.
-4. If unsure or text is unclear, use {"name":"Unknown","effect":"Unknown","note":""}
-5. For each ingredient found, classify into:
+4. Extract nutrition facts if visible: calories (kcal), sugar_g, sat_fat_g, sodium_mg, protein_g, fiber_g.
+5. If unsure or text is unclear, use {"name":"Unknown","effect":"Unknown","note":""}
+6. For each ingredient found, classify into:
    - Good
    - Bad
    - Neutral
    - Unknown
-6. Keep notes short (<= 8 words), factual, no guesses.
-7. Output ONLY JSON in exactly this format:
+7. Keep notes short (<= 8 words), factual, no guesses.
+8. Output ONLY JSON in exactly this format:
 
-{"ingredients":[{"name":"...","effect":"Good|Bad|Neutral|Unknown","note":"..."}]}
+{"ingredients":[{"name":"...","effect":"Good|Bad|Neutral|Unknown","note":"..."}],"nutrition":{"calories":number,"sugar_g":number,"sat_fat_g":number,"sodium_mg":number,"protein_g":number,"fiber_g":number}}
 
 ${contextLine}
 ${langNote}
@@ -131,13 +132,16 @@ function parseResponse(text) {
   const cleaned = stripCode(text || "");
 
   const parsedObj = tryParseJson(cleaned);
-  if (parsedObj?.ingredients?.length) {
-    return { ingredients: normalizeItems(parsedObj.ingredients) };
+  if (parsedObj?.ingredients?.length || parsedObj?.nutrition) {
+    return {
+      ingredients: normalizeItems(parsedObj.ingredients || []),
+      nutrition: normalizeNutrition(parsedObj.nutrition || {}),
+    };
   }
 
   const parsedArray = tryParseIngredientArray(cleaned);
   if (parsedArray?.length) {
-    return { ingredients: normalizeItems(parsedArray) };
+    return { ingredients: normalizeItems(parsedArray), nutrition: null };
   }
 
   // Fallback: parse lines, trying JSON per line first
@@ -198,6 +202,20 @@ function normalizeItems(items) {
     return a.name.localeCompare(b.name);
   });
   return normalized;
+}
+
+function normalizeNutrition(nutrition) {
+  if (!nutrition) return null;
+  const num = (v) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
+  const n = {
+    calories: num(nutrition.calories),
+    sugar_g: num(nutrition.sugar_g),
+    sat_fat_g: num(nutrition.sat_fat_g),
+    sodium_mg: num(nutrition.sodium_mg),
+    protein_g: num(nutrition.protein_g),
+    fiber_g: num(nutrition.fiber_g),
+  };
+  return Object.values(n).some((v) => v !== null) ? n : null;
 }
 
 function normalizeEffect(effect = "") {
@@ -264,41 +282,49 @@ function tryParseIngredientArray(text) {
 
 function renderResults(container, data) {
   container.innerHTML = "";
-  if (!data.ingredients.length) {
+  if (!data.ingredients.length && !data.nutrition) {
     container.textContent =
-      "No readable ingredients detected. Try a clearer photo.";
+      "No readable ingredients or nutrition detected. Try a clearer photo.";
     return;
   }
 
-  const { score, rating, percent, color, label } = computeHealthScore(
-    data.ingredients
+  const { score, rating, percent } = computeHealthScore(
+    data.ingredients,
+    data.nutrition
   );
   container.appendChild(buildHealthRing(score, rating, percent));
 
-  const list = document.createElement("div");
-  list.className = "label-list";
-  data.ingredients.forEach((item) => {
-    const row = document.createElement("div");
-    row.className = "label-row";
+  if (data.ingredients.length) {
+    const list = document.createElement("div");
+    list.className = "label-list";
+    data.ingredients.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "label-row";
 
-    const name = document.createElement("div");
-    name.className = "label-name";
-    name.textContent = item.name;
+      const name = document.createElement("div");
+      name.className = "label-name";
+      name.textContent = item.name;
 
-    const effect = document.createElement("span");
-    effect.className = `label-effect label-${item.effect.toLowerCase()}`;
-    effect.textContent = item.effect;
+      const effect = document.createElement("span");
+      effect.className = `label-effect label-${item.effect.toLowerCase()}`;
+      effect.textContent = item.effect;
 
+      const note = document.createElement("div");
+      note.className = "label-note";
+      note.textContent = item.note || "";
+
+      row.appendChild(name);
+      row.appendChild(effect);
+      if (item.note) row.appendChild(note);
+      list.appendChild(row);
+    });
+    container.appendChild(list);
+  } else {
     const note = document.createElement("div");
-    note.className = "label-note";
-    note.textContent = item.note || "";
-
-    row.appendChild(name);
-    row.appendChild(effect);
-    if (item.note) row.appendChild(note);
-    list.appendChild(row);
-  });
-  container.appendChild(list);
+    note.className = "muted-text";
+    note.textContent = "No ingredients detected; score based on nutrition facts.";
+    container.appendChild(note);
+  }
 }
 
 function setStatus(el, message, isError = false) {
@@ -307,33 +333,71 @@ function setStatus(el, message, isError = false) {
   el.style.color = isError ? "#b30000" : "#2f3a70";
 }
 
-function computeHealthScore(ingredients) {
-  if (!ingredients?.length)
-    return {
-      score: 5,
-      rating: "Caution",
-      percent: 50,
-      color: "#e6a700",
-      label: "Caution",
-    };
-  const weights = { good: 1.5, neutral: 0, unknown: -0.5, bad: -2.5 };
-  const total = ingredients.reduce((sum, item) => {
-    const w = weights[item.effect?.toLowerCase()] ?? weights.unknown;
-    return sum + w;
-  }, 0);
-  const avg = total / ingredients.length; // range roughly [-2.5, +1.5]
-  const score = Math.min(10, Math.max(0, ((avg + 2.5) / 4) * 10));
+function computeHealthScore(ingredients, nutrition) {
+  const hasIngredients = ingredients?.length > 0;
+  const hasNutrition = Boolean(nutrition);
+
+  // Ingredient-only score
+  const ingredientScore = (() => {
+    if (!hasIngredients) return null;
+    const weights = { good: 1.5, neutral: 0, unknown: -0.5, bad: -2.5 };
+    const total = ingredients.reduce((sum, item) => {
+      const w = weights[item.effect?.toLowerCase()] ?? weights.unknown;
+      return sum + w;
+    }, 0);
+    const avg = total / ingredients.length; // range roughly [-2.5, +1.5]
+    return Math.min(10, Math.max(0, ((avg + 2.5) / 4) * 10));
+  })();
+
+  // Nutrition-only score
+  const nutritionScore = (() => {
+    if (!hasNutrition) return null;
+    const { sugar_g, sat_fat_g, sodium_mg, calories, fiber_g, protein_g } = nutrition;
+    let score = 5; // start neutral
+    if (typeof sugar_g === "number") {
+      if (sugar_g > 25) score -= 3;
+      else if (sugar_g > 15) score -= 2;
+      else if (sugar_g < 5) score += 0.5;
+    }
+    if (typeof sat_fat_g === "number") {
+      if (sat_fat_g > 6) score -= 3;
+      else if (sat_fat_g > 3) score -= 1.5;
+      else if (sat_fat_g < 1) score += 0.5;
+    }
+    if (typeof sodium_mg === "number") {
+      if (sodium_mg > 700) score -= 3;
+      else if (sodium_mg > 400) score -= 1.5;
+      else if (sodium_mg < 150) score += 0.5;
+    }
+    if (typeof calories === "number") {
+      if (calories > 350) score -= 1.5;
+      else if (calories < 150) score += 0.5;
+    }
+    if (typeof fiber_g === "number" && fiber_g > 5) score += 0.5;
+    if (typeof protein_g === "number" && protein_g > 10) score += 0.5;
+    return Math.min(10, Math.max(0, score));
+  })();
+
+  let combined = 5;
+  if (hasIngredients && hasNutrition) {
+    combined = (ingredientScore * 0.6 + nutritionScore * 0.4);
+  } else if (hasIngredients) {
+    combined = ingredientScore;
+  } else if (hasNutrition) {
+    combined = nutritionScore;
+  }
+
   let rating = "Caution";
   let color = "#e6a700";
-  if (score < 4) {
+  if (combined < 3.5) {
     rating = "High Risk";
     color = "#c1121f";
-  } else if (score > 7) {
+  } else if (combined > 7.5) {
     rating = "Safer Choice";
     color = "#0b7a3f";
   }
-  const percent = Math.round(score * 10) / 10;
-  return { score, rating, percent, color, label: rating };
+  const percent = Math.round(combined * 10) / 10;
+  return { score: combined, rating, percent, color, label: rating };
 }
 
 function buildHealthRing(score, rating, percent) {
