@@ -1,63 +1,72 @@
-// modelLoader.js
-// Single place where we talk to Gemini from the browser.
+// modelLoader.js – OCR-safe Gemini wrapper
 
 import { getGeminiKey, getGeminiModel } from "../settings.js";
 
-const DEFAULT_MODEL = "models/gemini-2.0-flash-001";
+// Best model for OCR:
+const DEFAULT_MODEL = "models/gemini-1.5-flash-vision-latest";
+// For maximum OCR accuracy (slower + expensive):
+// const DEFAULT_MODEL = "models/gemini-1.5-pro-vision-latest";
 
 let cachedKey = "";
 let cachedModel = "";
 
-// prompt = { system, user }
-// options = { temperature?, maxTokens?, topP? }
+// prompt = { system, user, images?: [{ mimeType, data }] }
 export async function callGemini(prompt, options = {}, _retry = false) {
-  const { system, user } = prompt;
+  const { system, user, images = [] } = prompt;
 
   const baseMaxTokens = options.maxTokens ?? 2000;
   const effectiveMaxTokens = _retry ? baseMaxTokens * 4 : baseMaxTokens;
 
-  const safeSystem =
-    system?.trim() ||
-    "You are Health and Life Coach AI, a concise, upbeat wellness companion. Avoid medical advice and keep answers short.";
+  const safeSystem = system?.trim() || "OCR Mode";
+  const safeUser = user?.trim() || "Perform OCR.";
 
-  const safeUser =
-    user?.trim() ||
-    "Create a short, encouraging wellness suggestion for the upcoming month.";
+  // Build parts (image first helps a lot!)
+  const userParts = [];
+
+  images.forEach((img) => {
+    userParts.push({
+      inlineData: {
+        mimeType: img.mimeType,
+        data: img.data,
+      },
+    });
+  });
+
+  userParts.push({ text: safeUser });
 
   const body = {
-    // How the model should behave
     systemInstruction: {
       role: "system",
       parts: [{ text: safeSystem }],
     },
-
-    // What the user is asking for
     contents: [
       {
         role: "user",
-        parts: [{ text: safeUser }],
+        parts: userParts,
       },
     ],
-
     generationConfig: {
-      temperature: options.temperature ?? 0.7,
-      topP: options.topP ?? 0.9,
+      temperature: options.temperature ?? 0.0,
+      topP: options.topP ?? 0.1,
       maxOutputTokens: effectiveMaxTokens,
-      // This is supported; just tells it to give plain text back
       responseMimeType: "text/plain",
     },
   };
 
-  const [apiKey, model] = await Promise.all([loadGeminiKey(), loadGeminiModel()]);
+  const [apiKey, model] = await Promise.all([
+    loadGeminiKey(),
+    loadGeminiModel(options.modelOverride),
+  ]);
+
   if (!apiKey) {
-    throw new Error("Gemini API key missing. Add it from the Setup page.");
+    throw new Error("Gemini API key missing. Add it on Setup page.");
   }
+
   const endpoint = buildEndpoint(model);
 
   const response = await fetch(`${endpoint}?key=${apiKey}`, {
     method: "POST",
     mode: "cors",
-    cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -66,52 +75,38 @@ export async function callGemini(prompt, options = {}, _retry = false) {
 
   if (!response.ok) {
     throw new Error(
-      `Gemini request failed (${response.status}): ${JSON.stringify(data)}`
+      `Gemini error (${response.status}): ${JSON.stringify(data)}`
     );
   }
 
   const cand = data?.candidates?.[0];
   let text = "";
 
-  // Normal case: content.parts[]
   if (cand?.content?.parts?.length) {
     text = cand.content.parts
       .map((p) => p.text || "")
       .join("\n")
       .trim();
   } else if (typeof data?.text === "string") {
-    // Some wrappers put the text here
     text = data.text.trim();
   }
 
   const finish = cand?.finishReason;
   const block = data?.promptFeedback?.blockReason;
 
-  // If still nothing, decide what to do
   if (!text) {
-    // 1) Safety block
-    if (block) {
-      throw new Error(`Gemini blocked the response (${block}).`);
-    }
+    if (block) throw new Error(`Gemini blocked: ${block}`);
 
-    // 2) MAX_TOKENS but no text → retry once with more tokens
+    // IMPORTANT: retry with ORIGINAL prompt including images
     if (finish === "MAX_TOKENS" && !_retry) {
-      console.warn(
-        "Gemini hit MAX_TOKENS with no text; retrying with higher maxOutputTokens…"
-      );
       return await callGemini(
-        { system: safeSystem, user: safeUser },
+        prompt, // keep full original prompt incl. images
         { ...options, maxTokens: baseMaxTokens * 4 },
         true
       );
     }
 
-    // 3) Still nothing
-    throw new Error(
-      `Gemini returned no usable content${
-        finish ? ` (finishReason=${finish})` : ""
-      }.`
-    );
+    throw new Error(`Gemini returned empty result (${finish})`);
   }
 
   return text;
@@ -128,10 +123,11 @@ export function setCachedGeminiKey(value) {
   cachedKey = value;
 }
 
-async function loadGeminiModel() {
+async function loadGeminiModel(override) {
+  if (override) return normalizeModelName(override);
   if (!cachedModel) {
-    const model = await getGeminiModel();
-    cachedModel = normalizeModelName(model) || DEFAULT_MODEL;
+    const m = await getGeminiModel();
+    cachedModel = normalizeModelName(m) || DEFAULT_MODEL;
   }
   return cachedModel;
 }

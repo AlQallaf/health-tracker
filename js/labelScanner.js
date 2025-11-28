@@ -29,7 +29,7 @@ export function initLabelScanner() {
     resultsEl.textContent = "";
     analyzeBtn.disabled = true;
     try {
-      const dataUrl = await downscaleImage(file, 800, 800, 0.7);
+      const dataUrl = await downscaleImage(file, 1200, 1200, 0.9);
       setStatus(statusEl, "Asking Gemini...");
       const response = await analyzeLabel(dataUrl, {
         language: langSelect?.value || "en",
@@ -47,7 +47,7 @@ export function initLabelScanner() {
   });
 }
 
-async function downscaleImage(file, maxW, maxH, quality = 0.7) {
+async function downscaleImage(file, maxW, maxH, quality = 0.9) {
   const bitmap = await createImageBitmap(file);
   const ratio = Math.min(1, maxW / bitmap.width, maxH / bitmap.height);
   const targetW = Math.round(bitmap.width * ratio);
@@ -61,60 +61,98 @@ async function downscaleImage(file, maxW, maxH, quality = 0.7) {
 }
 
 async function analyzeLabel(dataUrl, { language, context }) {
-  const prompt = buildPrompt(dataUrl, language, context);
-  const text = await callGemini(
-    {
-      system:
-        "You are a concise nutrition label analyst. Extract ingredients and classify their health effect. Avoid long explanations.",
-      user: prompt,
-    },
-    { maxTokens: 600 }
-  );
+  const prompt = buildPrompt(language, context);
+
+  const payload = {
+    system: `
+STRICT OCR MODE — ZERO HALLUCINATION RULES:
+- Read ONLY text visible in the image.
+- DO NOT guess, infer, or add missing ingredients.
+- Extract EXACT wording exactly as printed.
+- If unreadable → skip or label as "Unknown".
+- Do NOT use world knowledge or typical ingredient lists.
+- Output ONLY valid JSON.
+    `.trim(),
+
+    user: prompt,
+
+    images: [
+      {
+        mimeType: "image/jpeg",
+        data: dataUrl.split(",")[1],
+      },
+    ],
+  };
+
+  const text = await callGemini(payload, {
+    maxTokens: 400,
+    temperature: 0.0,
+    topP: 0.1,
+  });
+
   const parsed = parseResponse(text);
-  if (!parsed.ingredients.length) {
-    throw new Error("No ingredients found in the response.");
-  }
   return parsed;
 }
 
-function buildPrompt(dataUrl, language = "en", context = "") {
+function buildPrompt(language = "en", context = "") {
   const langNote =
     language === "ar"
-      ? "Respond in Arabic. Effect words should remain Good/Bad/Neutral/Unknown in English for clarity."
+      ? "Respond in Arabic, but effect words must stay in English."
       : "Respond in English.";
-  const contextLine = context ? `Product context: ${context}.` : "Product context: general.";
-  return `You are given a product label image as base64-encoded JPEG. Steps:
-1) Extract the list of ingredients from the image (if you cannot read it, say unknown).
-2) For each ingredient, classify effect as one of: Good, Bad, Neutral, Unknown.
-3) Provide a very brief note (<=10 words) on the health effect or typical concern/benefit.
 
-Return ONLY JSON in this shape:
+  const contextLine = context
+    ? `Product context: ${context}.`
+    : "Product context: general.";
+
+  return `
+You will receive a product label image.
+
+TASK:
+1. Read ONLY the clearly visible ingredient text from the image.
+2. DO NOT add or guess any missing ingredients.
+3. Ingredient names must match the image EXACTLY.
+4. If unsure or text is unclear, use {"name":"Unknown","effect":"Unknown","note":""}
+5. For each ingredient found, classify into:
+   - Good
+   - Bad
+   - Neutral
+   - Unknown
+6. Keep notes short (<= 8 words), factual, no guesses.
+7. Output ONLY JSON in exactly this format:
+
 {"ingredients":[{"name":"...","effect":"Good|Bad|Neutral|Unknown","note":"..."}]}
 
 ${contextLine}
 ${langNote}
-
-Image (base64 JPEG, scaled): ${dataUrl}`;
+`.trim();
 }
 
 function parseResponse(text) {
   const cleaned = stripCode(text || "");
-  const json = extractJson(cleaned);
-  if (json) {
-    try {
-      const parsed = JSON.parse(json);
-      const items = Array.isArray(parsed?.ingredients) ? parsed.ingredients : [];
-      return { ingredients: normalizeItems(items) };
-    } catch (error) {
-      console.warn("Failed to parse JSON", error);
-    }
+
+  const parsedObj = tryParseJson(cleaned);
+  if (parsedObj?.ingredients?.length) {
+    return { ingredients: normalizeItems(parsedObj.ingredients) };
   }
-  // Fallback: parse lines "name - effect - note"
+
+  const parsedArray = tryParseIngredientArray(cleaned);
+  if (parsedArray?.length) {
+    return { ingredients: normalizeItems(parsedArray) };
+  }
+
+  // Fallback: parse lines, trying JSON per line first
   const ingredients = cleaned
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
+      const asJson = tryParseJson(line);
+      if (asJson) {
+        const items = Array.isArray(asJson.ingredients)
+          ? asJson.ingredients
+          : [asJson];
+        return items[0];
+      }
       const parts = line.split(/[-–—|]/).map((p) => p.trim());
       return {
         name: parts[0] || line,
@@ -164,10 +202,18 @@ function normalizeItems(items) {
 
 function normalizeEffect(effect = "") {
   const value = effect.toLowerCase();
-  if (value.includes("good") || value.includes("benefit") || value.includes("positive")) {
+  if (
+    value.includes("good") ||
+    value.includes("benefit") ||
+    value.includes("positive")
+  ) {
     return "Good";
   }
-  if (value.includes("bad") || value.includes("avoid") || value.includes("harm")) {
+  if (
+    value.includes("bad") ||
+    value.includes("avoid") ||
+    value.includes("harm")
+  ) {
     return "Bad";
   }
   if (value.includes("neutral") || value.includes("moderate")) {
@@ -177,7 +223,10 @@ function normalizeEffect(effect = "") {
 }
 
 function stripCode(text) {
-  return text.replace(/```json/gi, "").replace(/```/g, "").trim();
+  return text
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
+    .trim();
 }
 
 function extractJson(text) {
@@ -189,10 +238,35 @@ function extractJson(text) {
   return "";
 }
 
+function tryParseJson(text) {
+  const json = extractJson(text);
+  if (!json) return null;
+  try {
+    return JSON.parse(json);
+  } catch (error) {
+    return null;
+  }
+}
+
+function tryParseIngredientArray(text) {
+  const marker = text.indexOf("ingredients");
+  if (marker === -1) return null;
+  const start = text.indexOf("[", marker);
+  const end = text.lastIndexOf("]");
+  if (start === -1 || end === -1 || end <= start) return null;
+  const slice = text.slice(start, end + 1);
+  try {
+    return JSON.parse(slice);
+  } catch (error) {
+    return null;
+  }
+}
+
 function renderResults(container, data) {
   container.innerHTML = "";
   if (!data.ingredients.length) {
-    container.textContent = "No ingredients identified.";
+    container.textContent =
+      "No readable ingredients detected. Try a clearer photo.";
     return;
   }
   const list = document.createElement("div");
